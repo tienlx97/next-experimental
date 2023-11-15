@@ -6,128 +6,128 @@
 > next@14.0.3-canary.8 release /home/tienlx97/work/ct/next.js/packages/next
 > taskr release
 
-[14:37:02] Running with /home/tienlx97/work/ct/next.js/packages/next/taskfile.js
-[14:37:02] Starting release
-[14:37:03] Starting build
-[14:37:03] Starting precompile
-[14:37:03] Starting browser_polyfills
-[14:37:03] Starting next__polyfill_nomodule
-[14:37:03] Starting next__polyfill_module
-[14:37:03] Starting path_to_regexp
-[14:37:03] Starting copy_ncced
-[14:37:03] Starting copy_styled_jsx_assets
-[14:37:03] Finished next__polyfill_nomodule in 377ms
-[14:37:03] Finished path_to_regexp in 376ms
-[14:37:03] Finished next__polyfill_module in 377ms
-[14:37:03] Finished browser_polyfills in 378ms
-[14:37:03] Finished copy_styled_jsx_assets in 443ms
-[14:37:03] Finished copy_ncced in 443ms
-[14:37:03] Finished precompile in 446ms
-[14:37:03] Starting compile
-[14:37:03] Starting next_compile
-[14:37:03] Starting cli
-[14:37:03] Starting bin
-[14:37:03] Starting server
-[14:37:03] Starting server_esm
-[14:37:03] Starting nextbuild
-[14:37:03] Starting nextbuildjest
-[14:37:03] Starting nextbuildstatic
-[14:37:03] Starting nextbuild_esm
-[14:37:03] Starting pages
-[14:37:03] Starting pages_app
-[14:37:03] Starting pages_error
-[14:37:03] Starting pages_document
-[14:37:03] Starting pages_esm
-[14:37:03] Starting pages_app_esm
-[14:37:03] Starting pages_error_esm
-[14:37:03] Starting pages_document_esm
-[14:37:03] Starting lib
-[14:37:03] Starting lib_esm
-[14:37:03] Starting client
-[14:37:03] Starting client_esm
-[14:37:03] Starting telemetry
-[14:37:03] Starting trace
-[14:37:03] Starting shared
-[14:37:03] Starting shared_esm
-[14:37:03] Starting shared_re_exported
-[14:37:03] Starting shared_re_exported_esm
-[14:37:03] Starting server_wasm
-[14:37:03] Starting experimental_testmode
-[14:37:03] Starting ncc_amp_optimizer
+[14:41:18] Running with /home/tienlx97/work/ct/next.js/packages/next/taskfile.js
+[14:41:18] Starting release
+[14:41:18] Starting build
+[14:41:18] Starting precompile
+[14:41:18] Starting browser_polyfills
+[14:41:18] Starting next__polyfill_nomodule
+[14:41:18] Starting next__polyfill_module
+[14:41:18] Starting path_to_regexp
+[14:41:18] Starting copy_ncced
+[14:41:18] Starting copy_styled_jsx_assets
+[14:41:19] Finished next__polyfill_module in 239ms
+[14:41:19] Finished path_to_regexp in 239ms
+[14:41:19] Finished next__polyfill_nomodule in 241ms
+[14:41:19] Finished browser_polyfills in 241ms
+[14:41:19] Finished copy_ncced in 289ms
+[14:41:19] Finished copy_styled_jsx_assets in 289ms
+[14:41:19] Finished precompile in 292ms
+[14:41:19] Starting compile
+[14:41:19] Starting next_compile
+[14:41:19] Starting cli
+[14:41:19] Starting bin
+[14:41:19] Starting server
+[14:41:19] Starting server_esm
+[14:41:19] Starting nextbuild
+[14:41:19] Starting nextbuildjest
+[14:41:19] Starting nextbuildstatic
+[14:41:19] Starting nextbuild_esm
+[14:41:19] Starting pages
+[14:41:19] Starting pages_app
+[14:41:19] Starting pages_error
+[14:41:19] Starting pages_document
+[14:41:19] Starting pages_esm
+[14:41:19] Starting pages_app_esm
+[14:41:19] Starting pages_error_esm
+[14:41:19] Starting pages_document_esm
+[14:41:19] Starting lib
+[14:41:19] Starting lib_esm
+[14:41:19] Starting client
+[14:41:19] Starting client_esm
+[14:41:19] Starting telemetry
+[14:41:19] Starting trace
+[14:41:19] Starting shared
+[14:41:19] Starting shared_esm
+[14:41:19] Starting shared_re_exported
+[14:41:19] Starting shared_re_exported_esm
+[14:41:19] Starting server_wasm
+[14:41:19] Starting experimental_testmode
+[14:41:19] Starting ncc_amp_optimizer
 ncc: Version 0.34.0
 ncc: Compiling file index.js into CJS
-[14:37:03] Finished pages_error in 193ms
-[14:37:03] Finished pages_app_esm in 193ms
-[14:37:03] Finished pages_app in 193ms
-[14:37:03] Finished bin in 200ms
-[14:37:03] Finished pages_document_esm in 197ms
-[14:37:03] Finished pages_document in 198ms
-[14:37:03] Finished cli in 201ms
-[14:37:03] Finished pages in 198ms
-[14:37:03] Finished trace in 208ms
-[14:37:03] Finished server_wasm in 212ms
-[14:37:03] Finished pages_error_esm in 247ms
-[14:37:03] Finished pages_esm in 248ms
-[14:37:03] Finished experimental_testmode in 272ms
-[14:37:03] Finished lib in 352ms
-[14:37:03] Finished nextbuildstatic in 356ms
-[14:37:03] Finished nextbuildjest in 357ms
-[14:37:03] Finished telemetry in 356ms
-[14:37:04] Finished lib_esm in 697ms
-[14:37:04] Finished shared_re_exported in 728ms
-[14:37:04] Finished shared_re_exported_esm in 728ms
-[14:37:04] Finished shared in 729ms
-[14:37:04] Finished shared_esm in 733ms
-[14:37:04] Finished server in 742ms
-[14:37:04] Finished client in 740ms
-[14:37:04] Finished client_esm in 740ms
-[14:37:04] Finished nextbuild in 744ms
-[14:37:04] Finished nextbuild_esm in 743ms
-[14:37:04] Finished server_esm in 744ms
-[14:37:04] Finished ncc_amp_optimizer in 1.40s
-[14:37:04] Finished next_compile in 1.40s
-[14:37:04] Starting next_bundle
-[14:37:04] Starting next_bundle_app_turbo
-[14:37:05] Starting next_bundle_app_prod
-[14:37:05] Starting next_bundle_app_dev
-[14:37:05] Starting next_bundle_app_turbo_experimental
-[14:37:05] Starting next_bundle_app_prod_experimental
-[14:37:05] Starting next_bundle_app_dev_experimental
-[14:37:05] Starting next_bundle_pages_prod
-[14:37:05] Starting next_bundle_pages_dev
-[14:37:05] Starting next_bundle_pages_turbo
-[14:37:05] Starting next_bundle_server
-[14:37:07] Finished next_bundle_pages_prod in 2.37s
-[14:37:07] Finished next_bundle_pages_turbo in 2.37s
-[14:37:07] Finished next_bundle_server in 2.37s
-[14:37:08] Finished next_bundle_pages_dev in 3.35s
-[14:37:08] Finished next_bundle_app_prod_experimental in 3.49s
-[14:37:08] Finished next_bundle_app_prod in 3.66s
-[14:37:08] Finished next_bundle_app_turbo_experimental in 3.66s
-[14:37:08] Finished next_bundle_app_turbo in 3.99s
-[14:37:10] Finished next_bundle_app_dev in 5.37s
-[14:37:11] Finished next_bundle_app_dev_experimental in 5.96s
-[14:37:11] Finished next_bundle in 6.04s
-[14:37:11] Starting ncc_react_refresh_utils
-[14:37:11] Finished ncc_react_refresh_utils in 13ms
-[14:37:11] Starting ncc_next__react_dev_overlay
+[14:41:19] Finished pages_app in 323ms
+[14:41:19] Finished pages_document in 323ms
+[14:41:19] Finished pages_error in 324ms
+[14:41:19] Finished bin in 326ms
+[14:41:19] Finished pages in 324ms
+[14:41:19] Finished cli in 330ms
+[14:41:19] Finished telemetry in 336ms
+[14:41:19] Finished pages_app_esm in 414ms
+[14:41:19] Finished pages_error_esm in 414ms
+[14:41:19] Finished nextbuildjest in 416ms
+[14:41:19] Finished pages_document_esm in 414ms
+[14:41:19] Finished trace in 414ms
+[14:41:19] Finished pages_esm in 415ms
+[14:41:19] Finished nextbuildstatic in 439ms
+[14:41:19] Finished lib in 447ms
+[14:41:19] Finished shared_re_exported_esm in 449ms
+[14:41:19] Finished experimental_testmode in 455ms
+[14:41:19] Finished shared_re_exported in 458ms
+[14:41:19] Finished lib_esm in 755ms
+[14:41:19] Finished shared_esm in 755ms
+[14:41:20] Finished shared in 774ms
+[14:41:20] Finished nextbuild in 778ms
+[14:41:20] Finished server_wasm in 774ms
+[14:41:20] Finished server_esm in 783ms
+[14:41:20] Finished client in 780ms
+[14:41:20] Finished server in 784ms
+[14:41:20] Finished nextbuild_esm in 783ms
+[14:41:20] Finished client_esm in 782ms
+[14:41:20] Finished ncc_amp_optimizer in 1.45s
+[14:41:20] Finished next_compile in 1.45s
+[14:41:20] Starting next_bundle
+[14:41:20] Starting next_bundle_app_turbo
+[14:41:20] Starting next_bundle_app_prod
+[14:41:20] Starting next_bundle_app_dev
+[14:41:20] Starting next_bundle_app_turbo_experimental
+[14:41:20] Starting next_bundle_app_prod_experimental
+[14:41:20] Starting next_bundle_app_dev_experimental
+[14:41:20] Starting next_bundle_pages_prod
+[14:41:20] Starting next_bundle_pages_dev
+[14:41:20] Starting next_bundle_pages_turbo
+[14:41:20] Starting next_bundle_server
+[14:41:23] Finished next_bundle_pages_prod in 2.48s
+[14:41:23] Finished next_bundle_server in 2.48s
+[14:41:23] Finished next_bundle_pages_dev in 2.66s
+[14:41:24] Finished next_bundle_pages_turbo in 3.50s
+[14:41:24] Finished next_bundle_app_turbo in 3.90s
+[14:41:24] Finished next_bundle_app_turbo_experimental in 4.03s
+[14:41:24] Finished next_bundle_app_prod in 4.03s
+[14:41:25] Finished next_bundle_app_dev in 4.66s
+[14:41:25] Finished next_bundle_app_prod_experimental in 4.66s
+[14:41:26] Finished next_bundle_app_dev_experimental in 6.23s
+[14:41:26] Finished next_bundle in 6.30s
+[14:41:26] Starting ncc_react_refresh_utils
+[14:41:26] Finished ncc_react_refresh_utils in 9ms
+[14:41:26] Starting ncc_next__react_dev_overlay
 ncc: Version 0.34.0
 ncc: Compiling file middleware.js into CJS
 ncc: Version 0.34.0
 ncc: Compiling file middleware-turbopack.js into CJS
 ncc: Version 0.34.0
 ncc: Compiling file client.js into CJS
-[14:37:12] Finished ncc_next__react_dev_overlay in 997ms
-[14:37:12] Starting ncc_next_font
-[14:37:12] Finished ncc_next_font in 72ms
-[14:37:12] Starting capsize_metrics
-[14:37:12] Finished capsize_metrics in 6ms
-[14:37:12] Finished compile in 8.53s
-[14:37:12] Starting generate_types
+[14:41:27] Finished ncc_next__react_dev_overlay in 938ms
+[14:41:27] Starting ncc_next_font
+[14:41:27] Finished ncc_next_font in 71ms
+[14:41:27] Starting capsize_metrics
+[14:41:28] Finished capsize_metrics in 5ms
+[14:41:28] Finished compile in 8.78s
+[14:41:28] Starting generate_types
 
 > next@14.0.3-canary.8 types /home/tienlx97/work/ct/next.js/packages/next
 > tsc --declaration --emitDeclarationOnly --stripInternal --declarationDir dist
 
-[14:37:22] Finished generate_types in 10.43s
-[14:37:22] Finished build in 19.41s
-[14:37:22] Finished release in 19.55s
+[14:41:38] Finished generate_types in 10.87s
+[14:41:38] Finished build in 19.94s
+[14:41:38] Finished release in 20.08s
