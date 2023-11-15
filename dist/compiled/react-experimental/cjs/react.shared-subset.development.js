@@ -72,11 +72,7 @@ function setExtraStackFrame(stack) {
 }
 
 // -----------------------------------------------------------------------------
-
-var enableScopeAPI = false; // Experimental Create Event Handle API.
 var enableTransitionTracing = false; // No known bugs, but needs performance testing
-
-var enableLegacyHidden = false; // Enables unstable_avoidThisFallback feature in Fiber
 // stuff. Intended to enable React core members to more easily debug scheduling
 // issues in DEV builds.
 
@@ -401,7 +397,7 @@ function taintObjectReference(message, object) {
   TaintRegistryObjects.set(object, message);
 }
 
-var ReactVersion = '18.3.0-experimental-0e352ea01-20231109';
+var ReactVersion = '18.3.0-experimental-aec521a96-20231114';
 
 // ATTENTION
 // When adding new symbols to this file,
@@ -420,8 +416,10 @@ var REACT_SUSPENSE_TYPE = Symbol.for('react.suspense');
 var REACT_SUSPENSE_LIST_TYPE = Symbol.for('react.suspense_list');
 var REACT_MEMO_TYPE = Symbol.for('react.memo');
 var REACT_LAZY_TYPE = Symbol.for('react.lazy');
+var REACT_SCOPE_TYPE = Symbol.for('react.scope');
 var REACT_DEBUG_TRACING_MODE_TYPE = Symbol.for('react.debug_trace_mode');
 var REACT_OFFSCREEN_TYPE = Symbol.for('react.offscreen');
+var REACT_LEGACY_HIDDEN_TYPE = Symbol.for('react.legacy_hidden');
 var REACT_CACHE_TYPE = Symbol.for('react.cache');
 var REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED = Symbol.for('react.default_value');
 var REACT_POSTPONE_TYPE = Symbol.for('react.postpone');
@@ -1391,6 +1389,7 @@ function mapIntoArray(children, array, escapedPrefix, nameSoFar, callback) {
 
 function mapChildren(children, func, context) {
   if (children == null) {
+    // $FlowFixMe limitation refining abstract types in Flow
     return children;
   }
 
@@ -1654,7 +1653,7 @@ function isValidElementType(type) {
   } // Note: typeof might be other than 'symbol' or 'number' (e.g. if it's a polyfill).
 
 
-  if (type === REACT_FRAGMENT_TYPE || type === REACT_PROFILER_TYPE || enableDebugTracing  || type === REACT_STRICT_MODE_TYPE || type === REACT_SUSPENSE_TYPE || type === REACT_SUSPENSE_LIST_TYPE || enableLegacyHidden  || type === REACT_OFFSCREEN_TYPE || enableScopeAPI  || type === REACT_CACHE_TYPE || enableTransitionTracing ) {
+  if (type === REACT_FRAGMENT_TYPE || type === REACT_PROFILER_TYPE || enableDebugTracing  || type === REACT_STRICT_MODE_TYPE || type === REACT_SUSPENSE_TYPE || type === REACT_SUSPENSE_LIST_TYPE || type === REACT_LEGACY_HIDDEN_TYPE || type === REACT_OFFSCREEN_TYPE || type === REACT_SCOPE_TYPE || type === REACT_CACHE_TYPE || enableTransitionTracing ) {
     return true;
   }
 

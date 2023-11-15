@@ -10,7 +10,7 @@
 
 'use strict';
 
-var React = require("next/dist/compiled/react");
+var React = require('next/dist/compiled/react');
 var ReactDOM = require('react-dom');
 
 // Do not require this module directly! Use normal `invariant` calls with
@@ -26,7 +26,7 @@ function formatProdErrorMessage(code) {
   return "Minified React error #" + code + "; visit " + url + " for the full message or " + 'use the non-minified dev environment for full errors and additional ' + 'helpful warnings.';
 }
 
-var ReactVersion = '18.3.0-canary-0e352ea01-20231109';
+var ReactVersion = '18.3.0-experimental-aec521a96-20231114';
 
 // A pure JS implementation of a string hashing function. We do not use it for
 // security or obfuscation purposes, only to create compact hashes. So we
@@ -1023,6 +1023,14 @@ function pushAttribute(target, name, value) // not null or undefined
 
     case 'src':
     case 'href':
+      {
+        {
+          if (value === '') {
+
+            return;
+          }
+        }
+      }
     // Fall through to the last case which shouldn't remove empty strings.
 
     case 'action':
@@ -2501,11 +2509,25 @@ function pushStartCustomElement(target, props, tag) {
           break;
 
         case 'className':
+          {
+            // className gets rendered as class on the client, so it should be
+            // rendered as class on the server.
+            attributeName = 'class';
+          }
 
         // intentional fallthrough
 
         default:
           if (isAttributeNameSafe(propKey) && typeof propValue !== 'function' && typeof propValue !== 'symbol') {
+            {
+              if (propValue === false) {
+                continue;
+              } else if (propValue === true) {
+                propValue = '';
+              } else if (typeof propValue === 'object') {
+                continue;
+              }
+            }
 
             target.push(attributeSeparator, stringToChunk(attributeName), attributeAssign, stringToChunk(escapeTextForBrowser(propValue)), attributeEnd);
           }
@@ -4938,6 +4960,8 @@ const REACT_OFFSCREEN_TYPE = Symbol.for('react.offscreen');
 const REACT_LEGACY_HIDDEN_TYPE = Symbol.for('react.legacy_hidden');
 const REACT_CACHE_TYPE = Symbol.for('react.cache');
 const REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED = Symbol.for('react.default_value');
+const REACT_MEMO_CACHE_SENTINEL = Symbol.for('react.memo_cache_sentinel');
+const REACT_POSTPONE_TYPE = Symbol.for('react.postpone');
 const MAYBE_ITERATOR_SYMBOL = Symbol.iterator;
 const FAUX_ITERATOR_SYMBOL = '@@iterator';
 function getIteratorFn(maybeIterable) {
@@ -5044,6 +5068,12 @@ function getComponentNameFromType(type) {
           } catch (x) {
             return null;
           }
+        }
+
+      case REACT_SERVER_CONTEXT_TYPE:
+        {
+          const context2 = type;
+          return (context2.displayName || context2._globalName) + '.Provider';
         }
 
     }
@@ -6037,6 +6067,15 @@ function useCallback(callback, deps) {
   return useMemo(() => callback, deps);
 }
 
+function throwOnUseEffectEventCall() {
+  throw Error(formatProdErrorMessage(440));
+}
+
+function useEffectEvent(callback) {
+  // $FlowIgnore[incompatible-return]
+  return throwOnUseEffectEventCall;
+}
+
 function useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) {
   if (getServerSnapshot === undefined) {
     throw Error(formatProdErrorMessage(407));
@@ -6049,7 +6088,7 @@ function useDeferredValue(value, initialValue) {
   resolveCurrentlyRenderingComponent();
 
   {
-    return value;
+    return initialValue !== undefined ? initialValue : value;
   }
 }
 
@@ -6234,6 +6273,16 @@ function useCacheRefresh() {
   return unsupportedRefresh;
 }
 
+function useMemoCache(size) {
+  const data = new Array(size);
+
+  for (let i = 0; i < size; i++) {
+    data[i] = REACT_MEMO_CACHE_SENTINEL;
+  }
+
+  return data;
+}
+
 function noop$1() {}
 
 const HooksDispatcher = {
@@ -6262,6 +6311,14 @@ const HooksDispatcher = {
 
 {
   HooksDispatcher.useCacheRefresh = useCacheRefresh;
+}
+
+{
+  HooksDispatcher.useEffectEvent = useEffectEvent;
+}
+
+{
+  HooksDispatcher.useMemoCache = useMemoCache;
 }
 
 {
@@ -6484,6 +6541,12 @@ function createPendingSegment(request, index, boundary, parentFormatContext, las
 function popComponentStackInDEV(task) {
 } // stash the component stack of an unwinding error until it is processed
 
+function logPostpone(request, reason) {
+  // If this callback errors, we intentionally let that error bubble up to become a fatal error
+  // so that someone fixes the error reporting instead of hiding it.
+  request.onPostpone(reason);
+}
+
 function logRecoverableError(request, error) {
   // If this callback errors, we intentionally let that error bubble up to become a fatal error
   // so that someone fixes the error reporting instead of hiding it.
@@ -6600,7 +6663,12 @@ function renderSuspenseBoundary(request, someTask, keyPath, props) {
     newBoundary.status = CLIENT_RENDERED;
     let errorDigest;
 
-    {
+    if (typeof error === 'object' && error !== null && error.$$typeof === REACT_POSTPONE_TYPE) {
+      const postponeInstance = error;
+      logPostpone(request, postponeInstance.message); // TODO: Figure out a better signal than a magic digest value.
+
+      errorDigest = 'POSTPONE';
+    } else {
       errorDigest = logRecoverableError(request, error);
     }
 
@@ -6694,7 +6762,12 @@ function replaySuspenseBoundary(request, task, keyPath, props, id, childNodes, c
     resumedBoundary.status = CLIENT_RENDERED;
     let errorDigest;
 
-    {
+    if (typeof error === 'object' && error !== null && error.$$typeof === REACT_POSTPONE_TYPE) {
+      const postponeInstance = error;
+      logPostpone(request, postponeInstance.message); // TODO: Figure out a better signal than a magic digest value.
+
+      errorDigest = 'POSTPONE';
+    } else {
       errorDigest = logRecoverableError(request, error);
     }
 
@@ -7022,8 +7095,13 @@ function renderElement(request, task, keyPath, prevThenableState, type, props, r
 
     case REACT_SCOPE_TYPE:
       {
-
-        throw Error(formatProdErrorMessage(343));
+        {
+          const prevKeyPath = task.keyPath;
+          task.keyPath = keyPath;
+          renderNodeDestructive(request, task, null, props.children, -1);
+          task.keyPath = prevKeyPath;
+          return;
+        }
       }
 
     case REACT_SUSPENSE_TYPE:
@@ -7446,6 +7524,147 @@ function renderChildrenArray(request, task, children, childIndex) {
   task.keyPath = prevKeyPath;
 }
 
+function trackPostpone(request, trackedPostpones, task, segment) {
+  segment.status = POSTPONED;
+  const keyPath = task.keyPath;
+  const boundary = task.blockedBoundary;
+
+  if (boundary === null) {
+    segment.id = request.nextSegmentId++;
+    trackedPostpones.rootSlots = segment.id;
+
+    if (request.completedRootSegment !== null) {
+      // Postpone the root if this was a deeper segment.
+      request.completedRootSegment.status = POSTPONED;
+    }
+
+    return;
+  }
+
+  if (boundary !== null && boundary.status === PENDING) {
+    boundary.status = POSTPONED; // We need to eagerly assign it an ID because we'll need to refer to
+    // it before flushing and we know that we can't inline it.
+
+    boundary.rootSegmentID = request.nextSegmentId++;
+    const boundaryKeyPath = boundary.trackedContentKeyPath;
+
+    if (boundaryKeyPath === null) {
+      throw Error(formatProdErrorMessage(486));
+    }
+
+    const fallbackReplayNode = boundary.trackedFallbackNode;
+    const children = [];
+
+    if (boundaryKeyPath === keyPath && task.childIndex === -1) {
+      // Assign ID
+      if (segment.id === -1) {
+        if (segment.parentFlushed) {
+          // If this segment's parent was already flushed, it means we really just
+          // skipped the parent and this segment is now the root.
+          segment.id = boundary.rootSegmentID;
+        } else {
+          segment.id = request.nextSegmentId++;
+        }
+      } // We postponed directly inside the Suspense boundary so we mark this for resuming.
+
+
+      const boundaryNode = [boundaryKeyPath[1], boundaryKeyPath[2], children, segment.id, fallbackReplayNode, boundary.rootSegmentID];
+      trackedPostpones.workingMap.set(boundaryKeyPath, boundaryNode);
+      addToReplayParent(boundaryNode, boundaryKeyPath[0], trackedPostpones);
+      return;
+    } else {
+      let boundaryNode = trackedPostpones.workingMap.get(boundaryKeyPath);
+
+      if (boundaryNode === undefined) {
+        boundaryNode = [boundaryKeyPath[1], boundaryKeyPath[2], children, null, fallbackReplayNode, boundary.rootSegmentID];
+        trackedPostpones.workingMap.set(boundaryKeyPath, boundaryNode);
+        addToReplayParent(boundaryNode, boundaryKeyPath[0], trackedPostpones);
+      } else {
+        // Upgrade to ReplaySuspenseBoundary.
+        const suspenseBoundary = boundaryNode;
+        suspenseBoundary[4] = fallbackReplayNode;
+        suspenseBoundary[5] = boundary.rootSegmentID;
+      } // Fall through to add the child node.
+
+    }
+  } // We know that this will leave a hole so we might as well assign an ID now.
+  // We might have one already if we had a parent that gave us its ID.
+
+
+  if (segment.id === -1) {
+    if (segment.parentFlushed && boundary !== null) {
+      // If this segment's parent was already flushed, it means we really just
+      // skipped the parent and this segment is now the root.
+      segment.id = boundary.rootSegmentID;
+    } else {
+      segment.id = request.nextSegmentId++;
+    }
+  }
+
+  if (task.childIndex === -1) {
+    // Resume starting from directly inside the previous parent element.
+    if (keyPath === null) {
+      trackedPostpones.rootSlots = segment.id;
+    } else {
+      const workingMap = trackedPostpones.workingMap;
+      let resumableNode = workingMap.get(keyPath);
+
+      if (resumableNode === undefined) {
+        resumableNode = [keyPath[1], keyPath[2], [], segment.id];
+        addToReplayParent(resumableNode, keyPath[0], trackedPostpones);
+      } else {
+        resumableNode[3] = segment.id;
+      }
+    }
+  } else {
+    let slots;
+
+    if (keyPath === null) {
+      slots = trackedPostpones.rootSlots;
+
+      if (slots === null) {
+        slots = trackedPostpones.rootSlots = {};
+      } else if (typeof slots === 'number') {
+        throw Error(formatProdErrorMessage(491));
+      }
+    } else {
+      const workingMap = trackedPostpones.workingMap;
+      let resumableNode = workingMap.get(keyPath);
+
+      if (resumableNode === undefined) {
+        slots = {};
+        resumableNode = [keyPath[1], keyPath[2], [], slots];
+        workingMap.set(keyPath, resumableNode);
+        addToReplayParent(resumableNode, keyPath[0], trackedPostpones);
+      } else {
+        slots = resumableNode[3];
+
+        if (slots === null) {
+          slots = resumableNode[3] = {};
+        } else if (typeof slots === 'number') {
+          throw Error(formatProdErrorMessage(491));
+        }
+      }
+    }
+
+    slots[task.childIndex] = segment.id;
+  }
+}
+
+function injectPostponedHole(request, task, reason) {
+  logPostpone(request, reason); // Something suspended, we'll need to create a new segment and resolve it later.
+
+  const segment = task.blockedSegment;
+  const insertionIndex = segment.chunks.length;
+  const newSegment = createPendingSegment(request, insertionIndex, null, task.formatContext, // Adopt the parent segment's leading text embed
+  segment.lastPushedText, // Assume we are text embedded at the trailing edge
+  true);
+  segment.children.push(newSegment); // Reset lastPushedText for current Segment since the new Segment "consumed" it
+
+  segment.lastPushedText = false;
+  return newSegment;
+}
+
 function spawnNewSuspendedReplayTask(request, task, thenableState, x) {
   const newTask = createReplayTask(request, thenableState, task.replay, task.node, task.childIndex, task.blockedBoundary, task.abortSet, task.keyPath, task.formatContext, task.legacyContext, task.context, task.treeContext);
 
@@ -7558,6 +7777,29 @@ function renderNode(request, task, node, childIndex) {
 
           return;
         }
+
+        if (request.trackedPostpones !== null && x.$$typeof === REACT_POSTPONE_TYPE && task.blockedBoundary !== null // bubble if we're postponing in the shell
+        ) {
+            // If we're tracking postpones, we inject a hole here and continue rendering
+            // sibling. Similar to suspending. If we're not tracking, we treat it more like
+            // an error. Notably this doesn't spawn a new task since nothing will fill it
+            // in during this prerender.
+            const postponeInstance = x;
+            const trackedPostpones = request.trackedPostpones;
+            const postponedSegment = injectPostponedHole(request, task, // We don't use ReplayTasks in prerenders.
+            postponeInstance.message);
+            trackPostpone(request, trackedPostpones, task, postponedSegment); // Restore the context. We assume that this will be restored by the inner
+            // functions in case nothing throws so we don't use "finally" here.
+
+            task.formatContext = previousFormatContext;
+            task.legacyContext = previousLegacyContext;
+            task.context = previousContext;
+            task.keyPath = previousKeyPath;
+            task.treeContext = previousTreeContext; // Restore all active ReactContexts to what they were before.
+
+            switchContext(previousContext);
+            return;
+          }
       }
     }
   } // Restore the context. We assume that this will be restored by the inner
@@ -7587,7 +7829,12 @@ function erroredReplay(request, boundary, error, replayNodes, resumeSlots) {
   // We log it only once and reuse the digest.
   let errorDigest;
 
-  {
+  if (typeof error === 'object' && error !== null && error.$$typeof === REACT_POSTPONE_TYPE) {
+    const postponeInstance = error;
+    logPostpone(request, postponeInstance.message); // TODO: Figure out a better signal than a magic digest value.
+
+    errorDigest = 'POSTPONE';
+  } else {
     errorDigest = logRecoverableError(request, error);
   }
 
@@ -7598,7 +7845,12 @@ function erroredTask(request, boundary, error) {
   // Report the error to a global handler.
   let errorDigest;
 
-  {
+  if (typeof error === 'object' && error !== null && error.$$typeof === REACT_POSTPONE_TYPE) {
+    const postponeInstance = error;
+    logPostpone(request, postponeInstance.message); // TODO: Figure out a better signal than a magic digest value.
+
+    errorDigest = 'POSTPONE';
+  } else {
     errorDigest = logRecoverableError(request, error);
   }
 
@@ -7951,6 +8203,17 @@ function retryRenderTask(request, task, segment) {
         const ping = task.ping;
         x.then(ping, ping);
         task.thenableState = getThenableStateAfterSuspending();
+        return;
+      } else if (request.trackedPostpones !== null && x.$$typeof === REACT_POSTPONE_TYPE) {
+        // If we're tracking postpones, we mark this segment as postponed and finish
+        // the task without filling it in. If we're not tracking, we treat it more like
+        // an error.
+        const trackedPostpones = request.trackedPostpones;
+        task.abortSet.delete(task);
+        const postponeInstance = x;
+        logPostpone(request, postponeInstance.message);
+        trackPostpone(request, trackedPostpones, task, segment);
+        finishedTask(request, task.blockedBoundary, segment);
         return;
       }
     }
@@ -8428,7 +8691,7 @@ function flushCompletedQueues(request, destination) {
         {
           // We write the trailing tags but only if don't have any data to resume.
           // If we need to resume we'll write the postamble in the resume instead.
-          {
+          if (request.trackedPostpones === null) {
             writePostamble(destination, request.resumableState);
           }
         }
@@ -8548,6 +8811,23 @@ function getResumableState(request) {
 function getRenderState(request) {
   return request.renderState;
 }
+
+function addToReplayParent(node, parentKeyPath, trackedPostpones) {
+  if (parentKeyPath === null) {
+    trackedPostpones.rootNodes.push(node);
+  } else {
+    const workingMap = trackedPostpones.workingMap;
+    let parentNode = workingMap.get(parentKeyPath);
+
+    if (parentNode === undefined) {
+      parentNode = [parentKeyPath[1], parentKeyPath[2], [], null];
+      workingMap.set(parentKeyPath, parentNode);
+      addToReplayParent(parentNode, parentKeyPath[0], trackedPostpones);
+    }
+
+    parentNode[2].push(node);
+  }
+} // Returns the state of a postponed request or null if nothing was postponed.
 
 function onError() {// Non-fatal errors are ignored.
 }

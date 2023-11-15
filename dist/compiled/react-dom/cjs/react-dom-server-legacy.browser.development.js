@@ -14,10 +14,10 @@ if (process.env.NODE_ENV !== "production") {
   (function() {
 'use strict';
 
-var React = require("next/dist/compiled/react");
+var React = require('next/dist/compiled/react');
 var ReactDOM = require('react-dom');
 
-var ReactVersion = '18.3.0-canary-0e352ea01-20231109';
+var ReactVersion = '18.3.0-experimental-aec521a96-20231114';
 
 var ReactSharedInternals = React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
 
@@ -1190,6 +1190,13 @@ function validateProperty(tagName, name, value, eventRegistry) {
           return true;
         }
 
+      case 'innerText': // Properties
+
+      case 'textContent':
+        {
+          return true;
+        }
+
     }
 
     switch (typeof value) {
@@ -2352,6 +2359,21 @@ function pushAttribute(target, name, value) // not null or undefined
 
     case 'src':
     case 'href':
+      {
+        {
+          if (value === '') {
+            {
+              if (name === 'src') {
+                error('An empty string ("") was passed to the %s attribute. ' + 'This may cause the browser to download the whole page again over the network. ' + 'To fix this, either do not render the element at all ' + 'or pass null to %s instead of an empty string.', name, name);
+              } else {
+                error('An empty string ("") was passed to the %s attribute. ' + 'To fix this, either do not render the element at all ' + 'or pass null to %s instead of an empty string.', name, name);
+              }
+            }
+
+            return;
+          }
+        }
+      }
     // Fall through to the last case which shouldn't remove empty strings.
 
     case 'action':
@@ -4063,11 +4085,25 @@ function pushStartCustomElement(target, props, tag) {
           break;
 
         case 'className':
+          {
+            // className gets rendered as class on the client, so it should be
+            // rendered as class on the server.
+            attributeName = 'class';
+          }
 
         // intentional fallthrough
 
         default:
           if (isAttributeNameSafe(propKey) && typeof propValue !== 'function' && typeof propValue !== 'symbol') {
+            {
+              if (propValue === false) {
+                continue;
+              } else if (propValue === true) {
+                propValue = '';
+              } else if (typeof propValue === 'object') {
+                continue;
+              }
+            }
 
             target.push(attributeSeparator, stringToChunk(attributeName), attributeAssign, stringToChunk(escapeTextForBrowser(propValue)), attributeEnd);
           }
@@ -6599,6 +6635,8 @@ var REACT_OFFSCREEN_TYPE = Symbol.for('react.offscreen');
 var REACT_LEGACY_HIDDEN_TYPE = Symbol.for('react.legacy_hidden');
 var REACT_CACHE_TYPE = Symbol.for('react.cache');
 var REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED = Symbol.for('react.default_value');
+var REACT_MEMO_CACHE_SENTINEL = Symbol.for('react.memo_cache_sentinel');
+var REACT_POSTPONE_TYPE = Symbol.for('react.postpone');
 var MAYBE_ITERATOR_SYMBOL = Symbol.iterator;
 var FAUX_ITERATOR_SYMBOL = '@@iterator';
 function getIteratorFn(maybeIterable) {
@@ -6711,6 +6749,12 @@ function getComponentNameFromType(type) {
           } catch (x) {
             return null;
           }
+        }
+
+      case REACT_SERVER_CONTEXT_TYPE:
+        {
+          var context2 = type;
+          return (context2.displayName || context2._globalName) + '.Provider';
         }
 
     }
@@ -8634,6 +8678,15 @@ function useCallback(callback, deps) {
   }, deps);
 }
 
+function throwOnUseEffectEventCall() {
+  throw new Error("A function wrapped in useEffectEvent can't be called during rendering.");
+}
+
+function useEffectEvent(callback) {
+  // $FlowIgnore[incompatible-return]
+  return throwOnUseEffectEventCall;
+}
+
 function useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) {
   if (getServerSnapshot === undefined) {
     throw new Error('Missing getServerSnapshot, which is required for ' + 'server-rendered content. Will revert to client rendering.');
@@ -8646,7 +8699,7 @@ function useDeferredValue(value, initialValue) {
   resolveCurrentlyRenderingComponent();
 
   {
-    return value;
+    return initialValue !== undefined ? initialValue : value;
   }
 }
 
@@ -8835,6 +8888,16 @@ function useCacheRefresh() {
   return unsupportedRefresh;
 }
 
+function useMemoCache(size) {
+  var data = new Array(size);
+
+  for (var i = 0; i < size; i++) {
+    data[i] = REACT_MEMO_CACHE_SENTINEL;
+  }
+
+  return data;
+}
+
 function noop$1() {}
 
 var HooksDispatcher = {
@@ -8863,6 +8926,14 @@ var HooksDispatcher = {
 
 {
   HooksDispatcher.useCacheRefresh = useCacheRefresh;
+}
+
+{
+  HooksDispatcher.useEffectEvent = useEffectEvent;
+}
+
+{
+  HooksDispatcher.useMemoCache = useMemoCache;
 }
 
 {
@@ -9203,6 +9274,12 @@ function captureBoundaryErrorDetailsDev(boundary, error) {
   }
 }
 
+function logPostpone(request, reason) {
+  // If this callback errors, we intentionally let that error bubble up to become a fatal error
+  // so that someone fixes the error reporting instead of hiding it.
+  request.onPostpone(reason);
+}
+
 function logRecoverableError(request, error) {
   // If this callback errors, we intentionally let that error bubble up to become a fatal error
   // so that someone fixes the error reporting instead of hiding it.
@@ -9320,7 +9397,12 @@ function renderSuspenseBoundary(request, someTask, keyPath, props) {
     newBoundary.status = CLIENT_RENDERED;
     var errorDigest;
 
-    {
+    if (typeof error === 'object' && error !== null && error.$$typeof === REACT_POSTPONE_TYPE) {
+      var postponeInstance = error;
+      logPostpone(request, postponeInstance.message); // TODO: Figure out a better signal than a magic digest value.
+
+      errorDigest = 'POSTPONE';
+    } else {
       errorDigest = logRecoverableError(request, error);
     }
 
@@ -9424,7 +9506,12 @@ function replaySuspenseBoundary(request, task, keyPath, props, id, childNodes, c
     resumedBoundary.status = CLIENT_RENDERED;
     var errorDigest;
 
-    {
+    if (typeof error === 'object' && error !== null && error.$$typeof === REACT_POSTPONE_TYPE) {
+      var postponeInstance = error;
+      logPostpone(request, postponeInstance.message); // TODO: Figure out a better signal than a magic digest value.
+
+      errorDigest = 'POSTPONE';
+    } else {
       errorDigest = logRecoverableError(request, error);
     }
 
@@ -9916,8 +10003,13 @@ function renderElement(request, task, keyPath, prevThenableState, type, props, r
 
     case REACT_SCOPE_TYPE:
       {
-
-        throw new Error('ReactDOMServer does not yet support scope components.');
+        {
+          var _prevKeyPath4 = task.keyPath;
+          task.keyPath = keyPath;
+          renderNodeDestructive(request, task, null, props.children, -1);
+          task.keyPath = _prevKeyPath4;
+          return;
+        }
       }
 
     case REACT_SUSPENSE_TYPE:
@@ -10404,6 +10496,150 @@ function renderChildrenArray(request, task, children, childIndex) {
   task.keyPath = prevKeyPath;
 }
 
+function trackPostpone(request, trackedPostpones, task, segment) {
+  segment.status = POSTPONED;
+  var keyPath = task.keyPath;
+  var boundary = task.blockedBoundary;
+
+  if (boundary === null) {
+    segment.id = request.nextSegmentId++;
+    trackedPostpones.rootSlots = segment.id;
+
+    if (request.completedRootSegment !== null) {
+      // Postpone the root if this was a deeper segment.
+      request.completedRootSegment.status = POSTPONED;
+    }
+
+    return;
+  }
+
+  if (boundary !== null && boundary.status === PENDING) {
+    boundary.status = POSTPONED; // We need to eagerly assign it an ID because we'll need to refer to
+    // it before flushing and we know that we can't inline it.
+
+    boundary.rootSegmentID = request.nextSegmentId++;
+    var boundaryKeyPath = boundary.trackedContentKeyPath;
+
+    if (boundaryKeyPath === null) {
+      throw new Error('It should not be possible to postpone at the root. This is a bug in React.');
+    }
+
+    var fallbackReplayNode = boundary.trackedFallbackNode;
+    var children = [];
+
+    if (boundaryKeyPath === keyPath && task.childIndex === -1) {
+      // Assign ID
+      if (segment.id === -1) {
+        if (segment.parentFlushed) {
+          // If this segment's parent was already flushed, it means we really just
+          // skipped the parent and this segment is now the root.
+          segment.id = boundary.rootSegmentID;
+        } else {
+          segment.id = request.nextSegmentId++;
+        }
+      } // We postponed directly inside the Suspense boundary so we mark this for resuming.
+
+
+      var boundaryNode = [boundaryKeyPath[1], boundaryKeyPath[2], children, segment.id, fallbackReplayNode, boundary.rootSegmentID];
+      trackedPostpones.workingMap.set(boundaryKeyPath, boundaryNode);
+      addToReplayParent(boundaryNode, boundaryKeyPath[0], trackedPostpones);
+      return;
+    } else {
+      var _boundaryNode = trackedPostpones.workingMap.get(boundaryKeyPath);
+
+      if (_boundaryNode === undefined) {
+        _boundaryNode = [boundaryKeyPath[1], boundaryKeyPath[2], children, null, fallbackReplayNode, boundary.rootSegmentID];
+        trackedPostpones.workingMap.set(boundaryKeyPath, _boundaryNode);
+        addToReplayParent(_boundaryNode, boundaryKeyPath[0], trackedPostpones);
+      } else {
+        // Upgrade to ReplaySuspenseBoundary.
+        var suspenseBoundary = _boundaryNode;
+        suspenseBoundary[4] = fallbackReplayNode;
+        suspenseBoundary[5] = boundary.rootSegmentID;
+      } // Fall through to add the child node.
+
+    }
+  } // We know that this will leave a hole so we might as well assign an ID now.
+  // We might have one already if we had a parent that gave us its ID.
+
+
+  if (segment.id === -1) {
+    if (segment.parentFlushed && boundary !== null) {
+      // If this segment's parent was already flushed, it means we really just
+      // skipped the parent and this segment is now the root.
+      segment.id = boundary.rootSegmentID;
+    } else {
+      segment.id = request.nextSegmentId++;
+    }
+  }
+
+  if (task.childIndex === -1) {
+    // Resume starting from directly inside the previous parent element.
+    if (keyPath === null) {
+      trackedPostpones.rootSlots = segment.id;
+    } else {
+      var workingMap = trackedPostpones.workingMap;
+      var resumableNode = workingMap.get(keyPath);
+
+      if (resumableNode === undefined) {
+        resumableNode = [keyPath[1], keyPath[2], [], segment.id];
+        addToReplayParent(resumableNode, keyPath[0], trackedPostpones);
+      } else {
+        resumableNode[3] = segment.id;
+      }
+    }
+  } else {
+    var slots;
+
+    if (keyPath === null) {
+      slots = trackedPostpones.rootSlots;
+
+      if (slots === null) {
+        slots = trackedPostpones.rootSlots = {};
+      } else if (typeof slots === 'number') {
+        throw new Error('It should not be possible to postpone both at the root of an element ' + 'as well as a slot below. This is a bug in React.');
+      }
+    } else {
+      var _workingMap = trackedPostpones.workingMap;
+
+      var _resumableNode = _workingMap.get(keyPath);
+
+      if (_resumableNode === undefined) {
+        slots = {};
+        _resumableNode = [keyPath[1], keyPath[2], [], slots];
+
+        _workingMap.set(keyPath, _resumableNode);
+
+        addToReplayParent(_resumableNode, keyPath[0], trackedPostpones);
+      } else {
+        slots = _resumableNode[3];
+
+        if (slots === null) {
+          slots = _resumableNode[3] = {};
+        } else if (typeof slots === 'number') {
+          throw new Error('It should not be possible to postpone both at the root of an element ' + 'as well as a slot below. This is a bug in React.');
+        }
+      }
+    }
+
+    slots[task.childIndex] = segment.id;
+  }
+}
+
+function injectPostponedHole(request, task, reason) {
+  logPostpone(request, reason); // Something suspended, we'll need to create a new segment and resolve it later.
+
+  var segment = task.blockedSegment;
+  var insertionIndex = segment.chunks.length;
+  var newSegment = createPendingSegment(request, insertionIndex, null, task.formatContext, // Adopt the parent segment's leading text embed
+  segment.lastPushedText, // Assume we are text embedded at the trailing edge
+  true);
+  segment.children.push(newSegment); // Reset lastPushedText for current Segment since the new Segment "consumed" it
+
+  segment.lastPushedText = false;
+  return newSegment;
+}
+
 function spawnNewSuspendedReplayTask(request, task, thenableState, x) {
   var newTask = createReplayTask(request, thenableState, task.replay, task.node, task.childIndex, task.blockedBoundary, task.abortSet, task.keyPath, task.formatContext, task.legacyContext, task.context, task.treeContext);
 
@@ -10547,6 +10783,35 @@ function renderNode(request, task, node, childIndex) {
 
           return;
         }
+
+        if (request.trackedPostpones !== null && x.$$typeof === REACT_POSTPONE_TYPE && task.blockedBoundary !== null // bubble if we're postponing in the shell
+        ) {
+            // If we're tracking postpones, we inject a hole here and continue rendering
+            // sibling. Similar to suspending. If we're not tracking, we treat it more like
+            // an error. Notably this doesn't spawn a new task since nothing will fill it
+            // in during this prerender.
+            var postponeInstance = x;
+            var trackedPostpones = request.trackedPostpones;
+            var postponedSegment = injectPostponedHole(request, task, // We don't use ReplayTasks in prerenders.
+            postponeInstance.message);
+            trackPostpone(request, trackedPostpones, task, postponedSegment); // Restore the context. We assume that this will be restored by the inner
+            // functions in case nothing throws so we don't use "finally" here.
+
+            task.formatContext = previousFormatContext;
+            task.legacyContext = previousLegacyContext;
+            task.context = previousContext;
+            task.keyPath = previousKeyPath;
+            task.treeContext = previousTreeContext; // Restore all active ReactContexts to what they were before.
+
+            switchContext(previousContext);
+
+            {
+              task.componentStack = previousComponentStack;
+            }
+
+            lastBoundaryErrorComponentStackDev = null;
+            return;
+          }
       }
     }
   } // Restore the context. We assume that this will be restored by the inner
@@ -10580,7 +10845,12 @@ function erroredReplay(request, boundary, error, replayNodes, resumeSlots) {
   // We log it only once and reuse the digest.
   var errorDigest;
 
-  {
+  if (typeof error === 'object' && error !== null && error.$$typeof === REACT_POSTPONE_TYPE) {
+    var postponeInstance = error;
+    logPostpone(request, postponeInstance.message); // TODO: Figure out a better signal than a magic digest value.
+
+    errorDigest = 'POSTPONE';
+  } else {
     errorDigest = logRecoverableError(request, error);
   }
 
@@ -10591,7 +10861,12 @@ function erroredTask(request, boundary, error) {
   // Report the error to a global handler.
   var errorDigest;
 
-  {
+  if (typeof error === 'object' && error !== null && error.$$typeof === REACT_POSTPONE_TYPE) {
+    var postponeInstance = error;
+    logPostpone(request, postponeInstance.message); // TODO: Figure out a better signal than a magic digest value.
+
+    errorDigest = 'POSTPONE';
+  } else {
     errorDigest = logRecoverableError(request, error);
   }
 
@@ -11005,6 +11280,18 @@ function retryRenderTask(request, task, segment) {
         var ping = task.ping;
         x.then(ping, ping);
         task.thenableState = getThenableStateAfterSuspending();
+        return;
+      } else if (request.trackedPostpones !== null && x.$$typeof === REACT_POSTPONE_TYPE) {
+        // If we're tracking postpones, we mark this segment as postponed and finish
+        // the task without filling it in. If we're not tracking, we treat it more like
+        // an error.
+        var trackedPostpones = request.trackedPostpones;
+        task.abortSet.delete(task);
+        var postponeInstance = x;
+        logPostpone(request, postponeInstance.message);
+        trackPostpone(request, trackedPostpones, task, segment);
+        finishedTask(request, task.blockedBoundary, segment);
+        lastBoundaryErrorComponentStackDev = null;
         return;
       }
     }
@@ -11506,7 +11793,7 @@ function flushCompletedQueues(request, destination) {
         {
           // We write the trailing tags but only if don't have any data to resume.
           // If we need to resume we'll write the postamble in the resume instead.
-          {
+          if (request.trackedPostpones === null) {
             writePostamble(destination, request.resumableState);
           }
         }
@@ -11638,6 +11925,23 @@ function getResumableState(request) {
 function getRenderState(request) {
   return request.renderState;
 }
+
+function addToReplayParent(node, parentKeyPath, trackedPostpones) {
+  if (parentKeyPath === null) {
+    trackedPostpones.rootNodes.push(node);
+  } else {
+    var workingMap = trackedPostpones.workingMap;
+    var parentNode = workingMap.get(parentKeyPath);
+
+    if (parentNode === undefined) {
+      parentNode = [parentKeyPath[1], parentKeyPath[2], [], null];
+      workingMap.set(parentKeyPath, parentNode);
+      addToReplayParent(parentNode, parentKeyPath[0], trackedPostpones);
+    }
+
+    parentNode[2].push(node);
+  }
+} // Returns the state of a postponed request or null if nothing was postponed.
 
 function onError() {// Non-fatal errors are ignored.
 }

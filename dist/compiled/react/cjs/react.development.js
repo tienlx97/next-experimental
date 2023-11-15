@@ -23,43 +23,7 @@ if (
 ) {
   __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(new Error());
 }
-          var ReactVersion = '18.3.0-canary-0e352ea01-20231109';
-
-// ATTENTION
-// When adding new symbols to this file,
-// Please consider also adding to 'react-devtools-shared/src/backend/ReactSymbols'
-// The Symbol used to tag the ReactElement-like types.
-var REACT_ELEMENT_TYPE = Symbol.for('react.element');
-var REACT_PORTAL_TYPE = Symbol.for('react.portal');
-var REACT_FRAGMENT_TYPE = Symbol.for('react.fragment');
-var REACT_STRICT_MODE_TYPE = Symbol.for('react.strict_mode');
-var REACT_PROFILER_TYPE = Symbol.for('react.profiler');
-var REACT_PROVIDER_TYPE = Symbol.for('react.provider');
-var REACT_CONTEXT_TYPE = Symbol.for('react.context');
-var REACT_FORWARD_REF_TYPE = Symbol.for('react.forward_ref');
-var REACT_SUSPENSE_TYPE = Symbol.for('react.suspense');
-var REACT_SUSPENSE_LIST_TYPE = Symbol.for('react.suspense_list');
-var REACT_MEMO_TYPE = Symbol.for('react.memo');
-var REACT_LAZY_TYPE = Symbol.for('react.lazy');
-var REACT_OFFSCREEN_TYPE = Symbol.for('react.offscreen');
-var REACT_CACHE_TYPE = Symbol.for('react.cache');
-var MAYBE_ITERATOR_SYMBOL = Symbol.iterator;
-var FAUX_ITERATOR_SYMBOL = '@@iterator';
-function getIteratorFn(maybeIterable) {
-  if (maybeIterable === null || typeof maybeIterable !== 'object') {
-    return null;
-  }
-
-  var maybeIterator = MAYBE_ITERATOR_SYMBOL && maybeIterable[MAYBE_ITERATOR_SYMBOL] || maybeIterable[FAUX_ITERATOR_SYMBOL];
-
-  if (typeof maybeIterator === 'function') {
-    return maybeIterator;
-  }
-
-  return null;
-}
-
-/**
+          /**
  * Keeps track of the current dispatcher.
  */
 var ReactCurrentDispatcher$1 = {
@@ -143,16 +107,13 @@ function setExtraStackFrame(stack) {
 }
 
 // -----------------------------------------------------------------------------
-
-var enableScopeAPI = false; // Experimental Create Event Handle API.
-var enableCacheElement = false;
 var enableTransitionTracing = false; // No known bugs, but needs performance testing
-
-var enableLegacyHidden = false; // Enables unstable_avoidThisFallback feature in Fiber
 // stuff. Intended to enable React core members to more easily debug scheduling
 // issues in DEV builds.
 
 var enableDebugTracing = false; // Track which Fiber(s) schedule render work.
+
+var ContextRegistry = {};
 
 var ReactSharedInternals = {
   ReactCurrentDispatcher: ReactCurrentDispatcher$1,
@@ -164,6 +125,10 @@ var ReactSharedInternals = {
 {
   ReactSharedInternals.ReactDebugCurrentFrame = ReactDebugCurrentFrame$1;
   ReactSharedInternals.ReactCurrentActQueue = ReactCurrentActQueue;
+}
+
+{
+  ReactSharedInternals.ContextRegistry = ContextRegistry;
 }
 
 // by calls to these methods by a Babel plugin.
@@ -217,6 +182,49 @@ function printWarning(level, format, args) {
 
     Function.prototype.apply.call(console[level], console, argsWithFormat);
   }
+}
+
+var ReactVersion = '18.3.0-experimental-aec521a96-20231114';
+
+// ATTENTION
+// When adding new symbols to this file,
+// Please consider also adding to 'react-devtools-shared/src/backend/ReactSymbols'
+// The Symbol used to tag the ReactElement-like types.
+var REACT_ELEMENT_TYPE = Symbol.for('react.element');
+var REACT_PORTAL_TYPE = Symbol.for('react.portal');
+var REACT_FRAGMENT_TYPE = Symbol.for('react.fragment');
+var REACT_STRICT_MODE_TYPE = Symbol.for('react.strict_mode');
+var REACT_PROFILER_TYPE = Symbol.for('react.profiler');
+var REACT_PROVIDER_TYPE = Symbol.for('react.provider');
+var REACT_CONTEXT_TYPE = Symbol.for('react.context');
+var REACT_SERVER_CONTEXT_TYPE = Symbol.for('react.server_context');
+var REACT_FORWARD_REF_TYPE = Symbol.for('react.forward_ref');
+var REACT_SUSPENSE_TYPE = Symbol.for('react.suspense');
+var REACT_SUSPENSE_LIST_TYPE = Symbol.for('react.suspense_list');
+var REACT_MEMO_TYPE = Symbol.for('react.memo');
+var REACT_LAZY_TYPE = Symbol.for('react.lazy');
+var REACT_SCOPE_TYPE = Symbol.for('react.scope');
+var REACT_DEBUG_TRACING_MODE_TYPE = Symbol.for('react.debug_trace_mode');
+var REACT_OFFSCREEN_TYPE = Symbol.for('react.offscreen');
+var REACT_LEGACY_HIDDEN_TYPE = Symbol.for('react.legacy_hidden');
+var REACT_CACHE_TYPE = Symbol.for('react.cache');
+var REACT_TRACING_MARKER_TYPE = Symbol.for('react.tracing_marker');
+var REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED = Symbol.for('react.default_value');
+var REACT_POSTPONE_TYPE = Symbol.for('react.postpone');
+var MAYBE_ITERATOR_SYMBOL = Symbol.iterator;
+var FAUX_ITERATOR_SYMBOL = '@@iterator';
+function getIteratorFn(maybeIterable) {
+  if (maybeIterable === null || typeof maybeIterable !== 'object') {
+    return null;
+  }
+
+  var maybeIterator = MAYBE_ITERATOR_SYMBOL && maybeIterable[MAYBE_ITERATOR_SYMBOL] || maybeIterable[FAUX_ITERATOR_SYMBOL];
+
+  if (typeof maybeIterator === 'function') {
+    return maybeIterator;
+  }
+
+  return null;
 }
 
 var didWarnStateUpdateForUnmountedComponent = {};
@@ -615,6 +623,12 @@ function getComponentNameFromType(type) {
           } catch (x) {
             return null;
           }
+        }
+
+      case REACT_SERVER_CONTEXT_TYPE:
+        {
+          var context2 = type;
+          return (context2.displayName || context2._globalName) + '.Provider';
         }
 
     }
@@ -1165,6 +1179,7 @@ function mapIntoArray(children, array, escapedPrefix, nameSoFar, callback) {
 
 function mapChildren(children, func, context) {
   if (children == null) {
+    // $FlowFixMe limitation refining abstract types in Flow
     return children;
   }
 
@@ -1542,7 +1557,7 @@ function isValidElementType(type) {
   } // Note: typeof might be other than 'symbol' or 'number' (e.g. if it's a polyfill).
 
 
-  if (type === REACT_FRAGMENT_TYPE || type === REACT_PROFILER_TYPE || enableDebugTracing  || type === REACT_STRICT_MODE_TYPE || type === REACT_SUSPENSE_TYPE || type === REACT_SUSPENSE_LIST_TYPE || enableLegacyHidden  || type === REACT_OFFSCREEN_TYPE || enableScopeAPI  || enableCacheElement  || enableTransitionTracing ) {
+  if (type === REACT_FRAGMENT_TYPE || type === REACT_PROFILER_TYPE || enableDebugTracing  || type === REACT_STRICT_MODE_TYPE || type === REACT_SUSPENSE_TYPE || type === REACT_SUSPENSE_LIST_TYPE || type === REACT_LEGACY_HIDDEN_TYPE || type === REACT_OFFSCREEN_TYPE || type === REACT_SCOPE_TYPE || type === REACT_CACHE_TYPE || enableTransitionTracing ) {
     return true;
   }
 
@@ -1704,6 +1719,13 @@ function cache(fn) {
   };
 }
 
+function postpone(reason) {
+  // eslint-disable-next-line react-internal/prod-error-codes
+  var postponeInstance = new Error(reason);
+  postponeInstance.$$typeof = REACT_POSTPONE_TYPE;
+  throw postponeInstance;
+}
+
 function resolveDispatcher() {
   var dispatcher = ReactCurrentDispatcher$1.current;
 
@@ -1717,6 +1739,35 @@ function resolveDispatcher() {
 
 
   return dispatcher;
+}
+
+function getCacheSignal() {
+  var dispatcher = ReactCurrentCache.current;
+
+  if (!dispatcher) {
+    // If we have no cache to associate with this call, then we don't know
+    // its lifetime. We abort early since that's safer than letting it live
+    // for ever. Unlike just caching which can be a functional noop outside
+    // of React, these should generally always be associated with some React
+    // render but we're not limiting quite as much as making it a Hook.
+    // It's safer than erroring early at runtime.
+    var controller = new AbortController();
+    var reason = new Error('This CacheSignal was requested outside React which means that it is ' + 'immediately aborted.');
+    controller.abort(reason);
+    return controller.signal;
+  }
+
+  return dispatcher.getCacheSignal();
+}
+function getCacheForType(resourceType) {
+  var dispatcher = ReactCurrentCache.current;
+
+  if (!dispatcher) {
+    // If there is no dispatcher, then we treat this as not being cached.
+    return resourceType();
+  }
+
+  return dispatcher.getCacheForType(resourceType);
 }
 function useContext(Context) {
   var dispatcher = resolveDispatcher();
@@ -1803,6 +1854,16 @@ function useCacheRefresh() {
 function use(usable) {
   var dispatcher = resolveDispatcher();
   return dispatcher.use(usable);
+}
+function useMemoCache(size) {
+  var dispatcher = resolveDispatcher(); // $FlowFixMe[not-a-function] This is unstable, thus optional
+
+  return dispatcher.useMemoCache(size);
+}
+function useEffectEvent(callback) {
+  var dispatcher = resolveDispatcher(); // $FlowFixMe[not-a-function] This is unstable, thus optional
+
+  return dispatcher.useEffectEvent(callback);
 }
 function useOptimistic(passthrough, reducer) {
   var dispatcher = resolveDispatcher(); // $FlowFixMe[not-a-function] This is unstable, thus optional
@@ -2641,6 +2702,80 @@ function cloneElementWithValidation(element, props, children) {
   return newElement;
 }
 
+function createServerContext(globalName, defaultValue) {
+
+  {
+    error('Server Context is deprecated and will soon be removed. ' + 'It was never documented and we have found it not to be useful ' + 'enough to warrant the downside it imposes on all apps.');
+  }
+
+  var wasDefined = true;
+
+  if (!ContextRegistry[globalName]) {
+    wasDefined = false;
+    var _context = {
+      $$typeof: REACT_SERVER_CONTEXT_TYPE,
+      // As a workaround to support multiple concurrent renderers, we categorize
+      // some renderers as primary and others as secondary. We only expect
+      // there to be two concurrent renderers at most: React Native (primary) and
+      // Fabric (secondary); React DOM (primary) and React ART (secondary).
+      // Secondary renderers store their context values on separate fields.
+      _currentValue: defaultValue,
+      _currentValue2: defaultValue,
+      _defaultValue: defaultValue,
+      // Used to track how many concurrent renderers this context currently
+      // supports within in a single renderer. Such as parallel server rendering.
+      _threadCount: 0,
+      // These are circular
+      Provider: null,
+      Consumer: null,
+      _globalName: globalName
+    };
+    _context.Provider = {
+      $$typeof: REACT_PROVIDER_TYPE,
+      _context: _context
+    };
+
+    {
+      var hasWarnedAboutUsingConsumer;
+      _context._currentRenderer = null;
+      _context._currentRenderer2 = null;
+      Object.defineProperties(_context, {
+        Consumer: {
+          get: function () {
+            if (!hasWarnedAboutUsingConsumer) {
+              error('Consumer pattern is not supported by ReactServerContext');
+
+              hasWarnedAboutUsingConsumer = true;
+            }
+
+            return null;
+          }
+        }
+      });
+    }
+
+    ContextRegistry[globalName] = _context;
+  }
+
+  var context = ContextRegistry[globalName];
+
+  if (context._defaultValue === REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED) {
+    context._defaultValue = defaultValue;
+
+    if (context._currentValue === REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED) {
+      context._currentValue = defaultValue;
+    }
+
+    if (context._currentValue2 === REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED) {
+      context._currentValue2 = defaultValue;
+    }
+  } else if (wasDefined) {
+    throw new Error("ServerContext: " + globalName + " already defined");
+  }
+
+  return context;
+}
+
 function startTransition(scope, options) {
   var prevTransition = ReactCurrentBatchConfig.transition;
   ReactCurrentBatchConfig.transition = {};
@@ -2994,6 +3129,14 @@ var Children = {
   only: onlyChild
 };
 
+function experimental_useOptimistic(passthrough, reducer) {
+  {
+    error('useOptimistic is now in canary. Remove the experimental_ prefix. ' + 'The prefixed alias will be removed in an upcoming release.');
+  }
+
+  return useOptimistic(passthrough, reducer);
+}
+
 exports.Children = Children;
 exports.Component = Component;
 exports.Fragment = REACT_FRAGMENT_TYPE;
@@ -3008,13 +3151,27 @@ exports.createContext = createContext;
 exports.createElement = createElement;
 exports.createFactory = createFactory;
 exports.createRef = createRef;
+exports.createServerContext = createServerContext;
+exports.experimental_useEffectEvent = useEffectEvent;
+exports.experimental_useOptimistic = experimental_useOptimistic;
 exports.forwardRef = forwardRef;
 exports.isValidElement = isValidElement;
 exports.lazy = lazy;
 exports.memo = memo;
 exports.startTransition = startTransition;
+exports.unstable_Activity = REACT_OFFSCREEN_TYPE;
+exports.unstable_Cache = REACT_CACHE_TYPE;
+exports.unstable_DebugTracingMode = REACT_DEBUG_TRACING_MODE_TYPE;
+exports.unstable_LegacyHidden = REACT_LEGACY_HIDDEN_TYPE;
+exports.unstable_Scope = REACT_SCOPE_TYPE;
+exports.unstable_SuspenseList = REACT_SUSPENSE_LIST_TYPE;
+exports.unstable_TracingMarker = REACT_TRACING_MARKER_TYPE;
 exports.unstable_act = act;
+exports.unstable_getCacheForType = getCacheForType;
+exports.unstable_getCacheSignal = getCacheSignal;
+exports.unstable_postpone = postpone;
 exports.unstable_useCacheRefresh = useCacheRefresh;
+exports.unstable_useMemoCache = useMemoCache;
 exports.use = use;
 exports.useCallback = useCallback;
 exports.useContext = useContext;

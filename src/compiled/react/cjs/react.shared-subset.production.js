@@ -159,16 +159,150 @@ const ReactCurrentOwner = {
   current: null
 };
 
+const ContextRegistry = {};
+
 const ReactSharedInternals = {
   ReactCurrentDispatcher,
   ReactCurrentOwner
 };
 
+{
+  ReactSharedInternals.ContextRegistry = ContextRegistry;
+}
+
+const TaintRegistryObjects$1 = new WeakMap();
+const TaintRegistryValues$1 = new Map(); // Byte lengths of all binary values we've ever seen. We don't both refcounting this.
+// We expect to see only a few lengths here such as the length of token.
+
+const TaintRegistryByteLengths$1 = new Set(); // When a value is finalized, it means that it has been removed from any global caches.
+// No future requests can get a handle on it but any ongoing requests can still have
+// a handle on it. It's still tainted until that happens.
+
+const TaintRegistryPendingRequests$1 = new Set();
+
 const ReactServerSharedInternals = {
   ReactCurrentCache
 };
 
-var ReactVersion = '18.3.0-canary-0e352ea01-20231109';
+{
+  ReactServerSharedInternals.TaintRegistryObjects = TaintRegistryObjects$1;
+  ReactServerSharedInternals.TaintRegistryValues = TaintRegistryValues$1;
+  ReactServerSharedInternals.TaintRegistryByteLengths = TaintRegistryByteLengths$1;
+  ReactServerSharedInternals.TaintRegistryPendingRequests = TaintRegistryPendingRequests$1;
+}
+
+// Do not require this module directly! Use normal `invariant` calls with
+// template literal strings. The messages will be replaced with error codes
+// during build.
+function formatProdErrorMessage(code) {
+  let url = 'https://reactjs.org/docs/error-decoder.html?invariant=' + code;
+
+  for (let i = 1; i < arguments.length; i++) {
+    url += '&args[]=' + encodeURIComponent(arguments[i]);
+  }
+
+  return "Minified React error #" + code + "; visit " + url + " for the full message or " + 'use the non-minified dev environment for full errors and additional ' + 'helpful warnings.';
+}
+
+const getPrototypeOf = Object.getPrototypeOf;
+
+// Turns a TypedArray or ArrayBuffer into a string that can be used for comparison
+// in a Map to see if the bytes are the same.
+function binaryToComparableString(view) {
+  return String.fromCharCode.apply(String, new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+}
+
+const TaintRegistryObjects = ReactServerSharedInternals.TaintRegistryObjects,
+      TaintRegistryValues = ReactServerSharedInternals.TaintRegistryValues,
+      TaintRegistryByteLengths = ReactServerSharedInternals.TaintRegistryByteLengths,
+      TaintRegistryPendingRequests = ReactServerSharedInternals.TaintRegistryPendingRequests; // This is the shared constructor of all typed arrays.
+
+const TypedArrayConstructor = getPrototypeOf(Uint32Array.prototype).constructor;
+const defaultMessage = 'A tainted value was attempted to be serialized to a Client Component or Action closure. ' + 'This would leak it to the client.';
+
+function cleanup(entryValue) {
+  const entry = TaintRegistryValues.get(entryValue);
+
+  if (entry !== undefined) {
+    TaintRegistryPendingRequests.forEach(function (requestQueue) {
+      requestQueue.push(entryValue);
+      entry.count++;
+    });
+
+    if (entry.count === 1) {
+      TaintRegistryValues.delete(entryValue);
+    } else {
+      entry.count--;
+    }
+  }
+} // If FinalizationRegistry doesn't exist, we assume that objects life forever.
+// E.g. the whole VM is just the lifetime of a request.
+
+
+const finalizationRegistry = typeof FinalizationRegistry === 'function' ? new FinalizationRegistry(cleanup) : null;
+function taintUniqueValue(message, lifetime, value) {
+
+
+  message = '' + (message || defaultMessage);
+
+  if (lifetime === null || typeof lifetime !== 'object' && typeof lifetime !== 'function') {
+    throw Error(formatProdErrorMessage(493));
+  }
+
+  let entryValue;
+
+  if (typeof value === 'string' || typeof value === 'bigint') {
+    // Use as is.
+    entryValue = value;
+  } else if ((value instanceof TypedArrayConstructor || value instanceof DataView)) {
+    // For now, we just convert binary data to a string so that we can just use the native
+    // hashing in the Map implementation. It doesn't really matter what form the string
+    // take as long as it's the same when we look it up.
+    // We're not too worried about collisions since this should be a high entropy value.
+    TaintRegistryByteLengths.add(value.byteLength);
+    entryValue = binaryToComparableString(value);
+  } else {
+    const kind = value === null ? 'null' : typeof value;
+
+    if (kind === 'object' || kind === 'function') {
+      throw Error(formatProdErrorMessage(494));
+    }
+
+    throw Error(formatProdErrorMessage(495, kind));
+  }
+
+  const existingEntry = TaintRegistryValues.get(entryValue);
+
+  if (existingEntry === undefined) {
+    TaintRegistryValues.set(entryValue, {
+      message,
+      count: 1
+    });
+  } else {
+    existingEntry.count++;
+  }
+
+  if (finalizationRegistry !== null) {
+    finalizationRegistry.register(lifetime, entryValue);
+  }
+}
+function taintObjectReference(message, object) {
+
+
+  message = '' + (message || defaultMessage);
+
+  if (typeof object === 'string' || typeof object === 'bigint') {
+    throw Error(formatProdErrorMessage(496));
+  }
+
+  if (object === null || typeof object !== 'object' && typeof object !== 'function') {
+    throw Error(formatProdErrorMessage(497));
+  }
+
+  TaintRegistryObjects.set(object, message);
+}
+
+var ReactVersion = '18.3.0-experimental-aec521a96-20231114';
 
 // ATTENTION
 // When adding new symbols to this file,
@@ -179,10 +313,16 @@ const REACT_PORTAL_TYPE = Symbol.for('react.portal');
 const REACT_FRAGMENT_TYPE = Symbol.for('react.fragment');
 const REACT_STRICT_MODE_TYPE = Symbol.for('react.strict_mode');
 const REACT_PROFILER_TYPE = Symbol.for('react.profiler');
+const REACT_PROVIDER_TYPE = Symbol.for('react.provider');
+const REACT_SERVER_CONTEXT_TYPE = Symbol.for('react.server_context');
 const REACT_FORWARD_REF_TYPE = Symbol.for('react.forward_ref');
 const REACT_SUSPENSE_TYPE = Symbol.for('react.suspense');
+const REACT_SUSPENSE_LIST_TYPE = Symbol.for('react.suspense_list');
 const REACT_MEMO_TYPE = Symbol.for('react.memo');
 const REACT_LAZY_TYPE = Symbol.for('react.lazy');
+const REACT_DEBUG_TRACING_MODE_TYPE = Symbol.for('react.debug_trace_mode');
+const REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED = Symbol.for('react.default_value');
+const REACT_POSTPONE_TYPE = Symbol.for('react.postpone');
 const MAYBE_ITERATOR_SYMBOL = Symbol.iterator;
 const FAUX_ITERATOR_SYMBOL = '@@iterator';
 function getIteratorFn(maybeIterable) {
@@ -197,19 +337,6 @@ function getIteratorFn(maybeIterable) {
   }
 
   return null;
-}
-
-// Do not require this module directly! Use normal `invariant` calls with
-// template literal strings. The messages will be replaced with error codes
-// during build.
-function formatProdErrorMessage(code) {
-  let url = 'https://reactjs.org/docs/error-decoder.html?invariant=' + code;
-
-  for (let i = 1; i < arguments.length; i++) {
-    url += '&args[]=' + encodeURIComponent(arguments[i]);
-  }
-
-  return "Minified React error #" + code + "; visit " + url + " for the full message or " + 'use the non-minified dev environment for full errors and additional ' + 'helpful warnings.';
 }
 
 /**
@@ -754,6 +881,7 @@ function mapIntoArray(children, array, escapedPrefix, nameSoFar, callback) {
 
 function mapChildren(children, func, context) {
   if (children == null) {
+    // $FlowFixMe limitation refining abstract types in Flow
     return children;
   }
 
@@ -1026,6 +1154,13 @@ function cache(fn) {
   };
 }
 
+function postpone(reason) {
+  // eslint-disable-next-line react-internal/prod-error-codes
+  const postponeInstance = new Error(reason);
+  postponeInstance.$$typeof = REACT_POSTPONE_TYPE;
+  throw postponeInstance;
+}
+
 function resolveDispatcher() {
   const dispatcher = ReactCurrentDispatcher.current;
   // intentionally don't throw our own error because this is in a hot path.
@@ -1033,6 +1168,35 @@ function resolveDispatcher() {
 
 
   return dispatcher;
+}
+
+function getCacheSignal() {
+  const dispatcher = ReactCurrentCache.current;
+
+  if (!dispatcher) {
+    // If we have no cache to associate with this call, then we don't know
+    // its lifetime. We abort early since that's safer than letting it live
+    // for ever. Unlike just caching which can be a functional noop outside
+    // of React, these should generally always be associated with some React
+    // render but we're not limiting quite as much as making it a Hook.
+    // It's safer than erroring early at runtime.
+    const controller = new AbortController();
+    const reason = Error(formatProdErrorMessage(455));
+    controller.abort(reason);
+    return controller.signal;
+  }
+
+  return dispatcher.getCacheSignal();
+}
+function getCacheForType(resourceType) {
+  const dispatcher = ReactCurrentCache.current;
+
+  if (!dispatcher) {
+    // If there is no dispatcher, then we treat this as not being cached.
+    return resourceType();
+  }
+
+  return dispatcher.getCacheForType(resourceType);
 }
 function useContext(Context) {
   const dispatcher = resolveDispatcher();
@@ -1059,9 +1223,54 @@ function use(usable) {
 }
 
 function createServerContext(globalName, defaultValue) {
-  {
-    throw Error(formatProdErrorMessage(248));
+
+  let wasDefined = true;
+
+  if (!ContextRegistry[globalName]) {
+    wasDefined = false;
+    const context = {
+      $$typeof: REACT_SERVER_CONTEXT_TYPE,
+      // As a workaround to support multiple concurrent renderers, we categorize
+      // some renderers as primary and others as secondary. We only expect
+      // there to be two concurrent renderers at most: React Native (primary) and
+      // Fabric (secondary); React DOM (primary) and React ART (secondary).
+      // Secondary renderers store their context values on separate fields.
+      _currentValue: defaultValue,
+      _currentValue2: defaultValue,
+      _defaultValue: defaultValue,
+      // Used to track how many concurrent renderers this context currently
+      // supports within in a single renderer. Such as parallel server rendering.
+      _threadCount: 0,
+      // These are circular
+      Provider: null,
+      Consumer: null,
+      _globalName: globalName
+    };
+    context.Provider = {
+      $$typeof: REACT_PROVIDER_TYPE,
+      _context: context
+    };
+
+    ContextRegistry[globalName] = context;
   }
+
+  const context = ContextRegistry[globalName];
+
+  if (context._defaultValue === REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED) {
+    context._defaultValue = defaultValue;
+
+    if (context._currentValue === REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED) {
+      context._currentValue = defaultValue;
+    }
+
+    if (context._currentValue2 === REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED) {
+      context._currentValue2 = defaultValue;
+    }
+  } else if (wasDefined) {
+    throw Error(formatProdErrorMessage(429, globalName));
+  }
+
+  return context;
 }
 
 function startTransition(scope, options) {
@@ -1094,11 +1303,18 @@ exports.cloneElement = cloneElement;
 exports.createElement = createElement;
 exports.createRef = createRef;
 exports.createServerContext = createServerContext;
+exports.experimental_taintObjectReference = taintObjectReference;
+exports.experimental_taintUniqueValue = taintUniqueValue;
 exports.forwardRef = forwardRef;
 exports.isValidElement = isValidElement;
 exports.lazy = lazy;
 exports.memo = memo;
 exports.startTransition = startTransition;
+exports.unstable_DebugTracingMode = REACT_DEBUG_TRACING_MODE_TYPE;
+exports.unstable_SuspenseList = REACT_SUSPENSE_LIST_TYPE;
+exports.unstable_getCacheForType = getCacheForType;
+exports.unstable_getCacheSignal = getCacheSignal;
+exports.unstable_postpone = postpone;
 exports.use = use;
 exports.useCallback = useCallback;
 exports.useContext = useContext;

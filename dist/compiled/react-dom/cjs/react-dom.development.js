@@ -23,16 +23,8 @@ if (
 ) {
   __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(new Error());
 }
-          var React = require("next/dist/compiled/react");
-var Scheduler = require("next/dist/compiled/scheduler");
-
-var Internals = {
-  usingClientEntryPoint: false,
-  Events: null,
-  Dispatcher: {
-    current: null
-  }
-};
+          var React = require('next/dist/compiled/react');
+var Scheduler = require('next/dist/compiled/scheduler');
 
 var ReactSharedInternals = React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
 
@@ -95,6 +87,14 @@ function printWarning(level, format, args) {
   }
 }
 
+var Internals = {
+  usingClientEntryPoint: false,
+  Events: null,
+  Dispatcher: {
+    current: null
+  }
+};
+
 var assign = Object.assign;
 
 // -----------------------------------------------------------------------------
@@ -131,8 +131,6 @@ var enableAsyncActions = true; // Not sure if www still uses this. We don't have
 var enableSuspenseCallback = false; // Experimental Scope support.
 
 var enableLazyContextPropagation = false; // FB-only usage. The new API has different semantics.
-
-var enableLegacyHidden = false; // Enables unstable_avoidThisFallback feature in Fiber
 var enableHostSingletons = true;
 var alwaysThrottleRetries = true;
 // Chopping Block
@@ -156,12 +154,14 @@ var createRootStrictEffectsByDefault = false;
 // in open source, but www codebase still relies on it. Need to remove.
 
 var disableCommentsAsDOMContainers = true; // Disable javascript: URL strings in href for XSS protection.
+
+var disableIEWorkarounds = true; // Filter certain DOM attributes (e.g. src, href) if their values are empty
 // Debugging and DevTools
 // -----------------------------------------------------------------------------
 // Adds user timing marks for e.g. state updates, suspense, and work loop stuff,
 // for an experimental timeline tool.
 
-var enableSchedulingProfiler = true; // Helps identify side effects in render-phase lifecycle hooks and setState
+var enableSchedulingProfiler = false; // Helps identify side effects in render-phase lifecycle hooks and setState
 
 var enableProfilerTimer = true; // Record durations for commit and passive effects phases.
 
@@ -286,6 +286,9 @@ var REACT_OFFSCREEN_TYPE = Symbol.for('react.offscreen');
 var REACT_LEGACY_HIDDEN_TYPE = Symbol.for('react.legacy_hidden');
 var REACT_CACHE_TYPE = Symbol.for('react.cache');
 var REACT_TRACING_MARKER_TYPE = Symbol.for('react.tracing_marker');
+var REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED = Symbol.for('react.default_value');
+var REACT_MEMO_CACHE_SENTINEL = Symbol.for('react.memo_cache_sentinel');
+var REACT_POSTPONE_TYPE = Symbol.for('react.postpone');
 var MAYBE_ITERATOR_SYMBOL = Symbol.iterator;
 var FAUX_ITERATOR_SYMBOL = '@@iterator';
 function getIteratorFn(maybeIterable) {
@@ -532,7 +535,11 @@ var MountPassiveDev =
 
 var BeforeMutationMask = // TODO: Remove Update flag from before mutation phase by re-landing Visibility
 // flag logic (see #20043)
-Update | Snapshot | (0);
+Update | Snapshot | (// createEventHandle needs to visit deleted and hidden trees to
+// fire beforeblur
+// TODO: Only need to visit Deletions during BeforeMutation phase if an
+// element is focused.
+ChildDeletion | Visibility );
 var MutationMask = Placement | Update | ChildDeletion | ContentReset | Ref | Hydrating | Visibility;
 var LayoutMask = Update | Callback | Ref | Visibility; // TODO: Split into PassiveMountMask and PassiveUnmountMask
 
@@ -655,7 +662,6 @@ function reenableLogs() {
 
 var rendererID = null;
 var injectedHook = null;
-var injectedProfilingHooks = null;
 var hasLoggedError = false;
 var isDevToolsPresent = typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== 'undefined';
 function injectInternals(internals) {
@@ -683,15 +689,7 @@ function injectInternals(internals) {
   }
 
   try {
-    if (enableSchedulingProfiler) {
-      // Conditionally inject these hooks only if Timeline profiler is supported by this build.
-      // This gives DevTools a way to feature detect that isn't tied to version number
-      // (since profiling and timeline are controlled by different feature flags).
-      internals = assign({}, internals, {
-        getLaneLabelMap: getLaneLabelMap,
-        injectProfilingHooks: injectProfilingHooks
-      });
-    }
+    if (enableSchedulingProfiler) ;
 
     rendererID = hook.inject(internals); // We have successfully injected, so now it is safe to set up hooks.
 
@@ -826,190 +824,11 @@ function setIsStrictModeForDevtools(newIsStrictMode) {
 } // Profiler API hooks
 
 function injectProfilingHooks(profilingHooks) {
-  injectedProfilingHooks = profilingHooks;
 }
 
 function getLaneLabelMap() {
   {
-    var map = new Map();
-    var lane = 1;
-
-    for (var index = 0; index < TotalLanes; index++) {
-      var label = getLabelForLane(lane);
-      map.set(lane, label);
-      lane *= 2;
-    }
-
-    return map;
-  }
-}
-
-function markCommitStarted(lanes) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markCommitStarted === 'function') {
-      injectedProfilingHooks.markCommitStarted(lanes);
-    }
-  }
-}
-function markCommitStopped() {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markCommitStopped === 'function') {
-      injectedProfilingHooks.markCommitStopped();
-    }
-  }
-}
-function markComponentRenderStarted(fiber) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentRenderStarted === 'function') {
-      injectedProfilingHooks.markComponentRenderStarted(fiber);
-    }
-  }
-}
-function markComponentRenderStopped() {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentRenderStopped === 'function') {
-      injectedProfilingHooks.markComponentRenderStopped();
-    }
-  }
-}
-function markComponentPassiveEffectMountStarted(fiber) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentPassiveEffectMountStarted === 'function') {
-      injectedProfilingHooks.markComponentPassiveEffectMountStarted(fiber);
-    }
-  }
-}
-function markComponentPassiveEffectMountStopped() {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentPassiveEffectMountStopped === 'function') {
-      injectedProfilingHooks.markComponentPassiveEffectMountStopped();
-    }
-  }
-}
-function markComponentPassiveEffectUnmountStarted(fiber) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentPassiveEffectUnmountStarted === 'function') {
-      injectedProfilingHooks.markComponentPassiveEffectUnmountStarted(fiber);
-    }
-  }
-}
-function markComponentPassiveEffectUnmountStopped() {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentPassiveEffectUnmountStopped === 'function') {
-      injectedProfilingHooks.markComponentPassiveEffectUnmountStopped();
-    }
-  }
-}
-function markComponentLayoutEffectMountStarted(fiber) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentLayoutEffectMountStarted === 'function') {
-      injectedProfilingHooks.markComponentLayoutEffectMountStarted(fiber);
-    }
-  }
-}
-function markComponentLayoutEffectMountStopped() {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentLayoutEffectMountStopped === 'function') {
-      injectedProfilingHooks.markComponentLayoutEffectMountStopped();
-    }
-  }
-}
-function markComponentLayoutEffectUnmountStarted(fiber) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentLayoutEffectUnmountStarted === 'function') {
-      injectedProfilingHooks.markComponentLayoutEffectUnmountStarted(fiber);
-    }
-  }
-}
-function markComponentLayoutEffectUnmountStopped() {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentLayoutEffectUnmountStopped === 'function') {
-      injectedProfilingHooks.markComponentLayoutEffectUnmountStopped();
-    }
-  }
-}
-function markComponentErrored(fiber, thrownValue, lanes) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentErrored === 'function') {
-      injectedProfilingHooks.markComponentErrored(fiber, thrownValue, lanes);
-    }
-  }
-}
-function markComponentSuspended(fiber, wakeable, lanes) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markComponentSuspended === 'function') {
-      injectedProfilingHooks.markComponentSuspended(fiber, wakeable, lanes);
-    }
-  }
-}
-function markLayoutEffectsStarted(lanes) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markLayoutEffectsStarted === 'function') {
-      injectedProfilingHooks.markLayoutEffectsStarted(lanes);
-    }
-  }
-}
-function markLayoutEffectsStopped() {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markLayoutEffectsStopped === 'function') {
-      injectedProfilingHooks.markLayoutEffectsStopped();
-    }
-  }
-}
-function markPassiveEffectsStarted(lanes) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markPassiveEffectsStarted === 'function') {
-      injectedProfilingHooks.markPassiveEffectsStarted(lanes);
-    }
-  }
-}
-function markPassiveEffectsStopped() {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markPassiveEffectsStopped === 'function') {
-      injectedProfilingHooks.markPassiveEffectsStopped();
-    }
-  }
-}
-function markRenderStarted(lanes) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markRenderStarted === 'function') {
-      injectedProfilingHooks.markRenderStarted(lanes);
-    }
-  }
-}
-function markRenderYielded() {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markRenderYielded === 'function') {
-      injectedProfilingHooks.markRenderYielded();
-    }
-  }
-}
-function markRenderStopped() {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markRenderStopped === 'function') {
-      injectedProfilingHooks.markRenderStopped();
-    }
-  }
-}
-function markRenderScheduled(lane) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markRenderScheduled === 'function') {
-      injectedProfilingHooks.markRenderScheduled(lane);
-    }
-  }
-}
-function markForceUpdateScheduled(fiber, lane) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markForceUpdateScheduled === 'function') {
-      injectedProfilingHooks.markForceUpdateScheduled(fiber, lane);
-    }
-  }
-}
-function markStateUpdateScheduled(fiber, lane) {
-  {
-    if (injectedProfilingHooks !== null && typeof injectedProfilingHooks.markStateUpdateScheduled === 'function') {
-      injectedProfilingHooks.markStateUpdateScheduled(fiber, lane);
-    }
+    return null;
   }
 }
 
@@ -1168,67 +987,6 @@ var DeferredLane =
 // update loops, so it doesn't include hydration lanes or retries.
 
 var UpdateLanes = SyncLane | InputContinuousLane | DefaultLane | TransitionLanes; // This function is used for the experimental timeline (react-devtools-timeline)
-// It should be kept in sync with the Lanes values above.
-
-function getLabelForLane(lane) {
-  {
-    if (lane & SyncHydrationLane) {
-      return 'SyncHydrationLane';
-    }
-
-    if (lane & SyncLane) {
-      return 'Sync';
-    }
-
-    if (lane & InputContinuousHydrationLane) {
-      return 'InputContinuousHydration';
-    }
-
-    if (lane & InputContinuousLane) {
-      return 'InputContinuous';
-    }
-
-    if (lane & DefaultHydrationLane) {
-      return 'DefaultHydration';
-    }
-
-    if (lane & DefaultLane) {
-      return 'Default';
-    }
-
-    if (lane & TransitionHydrationLane) {
-      return 'TransitionHydration';
-    }
-
-    if (lane & TransitionLanes) {
-      return 'Transition';
-    }
-
-    if (lane & RetryLanes) {
-      return 'Retry';
-    }
-
-    if (lane & SelectiveHydrationLane) {
-      return 'SelectiveHydration';
-    }
-
-    if (lane & IdleHydrationLane) {
-      return 'IdleHydration';
-    }
-
-    if (lane & IdleLane) {
-      return 'Idle';
-    }
-
-    if (lane & OffscreenLane) {
-      return 'Offscreen';
-    }
-
-    if (lane & DeferredLane) {
-      return 'Deferred';
-    }
-  }
-}
 var NoTimestamp = -1;
 var nextTransitionLane = TransitionLane1;
 var nextRetryLane = RetryLane1;
@@ -2270,7 +2028,7 @@ function getClosestInstanceFromNode(targetNode) {
  * instance, or null if the node was not rendered by this React.
  */
 
-function getInstanceFromNode(node) {
+function getInstanceFromNode$1(node) {
   var inst = node[internalInstanceKey] || node[internalContainerInstanceKey];
 
   if (inst) {
@@ -2318,6 +2076,35 @@ function getEventListenerSet(node) {
 
   return elementListenerSet;
 }
+function getFiberFromScopeInstance(scope) {
+  {
+    return scope[internalInstanceKey] || null;
+  }
+}
+function setEventHandlerListeners(scope, listeners) {
+  scope[internalEventHandlerListenersKey] = listeners;
+}
+function getEventHandlerListeners(scope) {
+  return scope[internalEventHandlerListenersKey] || null;
+}
+function addEventHandleToTarget(target, eventHandle) {
+  var eventHandles = target[internalEventHandlesSetKey];
+
+  if (eventHandles === undefined) {
+    eventHandles = target[internalEventHandlesSetKey] = new Set();
+  }
+
+  eventHandles.add(eventHandle);
+}
+function doesTargetHaveEventHandle(target, eventHandle) {
+  var eventHandles = target[internalEventHandlesSetKey];
+
+  if (eventHandles === undefined) {
+    return false;
+  }
+
+  return eventHandles.has(eventHandle);
+}
 function getResourcesFromRoot(root) {
   var resources = root[internalRootNodeResourcesKey];
 
@@ -2341,6 +2128,11 @@ function isOwnedInstance(node) {
 }
 
 var allNativeEvents = new Set();
+
+{
+  allNativeEvents.add('beforeblur');
+  allNativeEvents.add('afterblur');
+}
 /**
  * Mapping from registration name to event name
  */
@@ -2499,12 +2291,30 @@ function getValueForAttributeOnCustomComponent(node, name, expected) {
           // it would be expected that they end up not having an attribute.
           return expected;
 
+        case 'function':
+          {
+            return expected;
+          }
+
+        case 'boolean':
+          {
+            if (expected === false) {
+              return expected;
+            }
+          }
+
       }
 
       return expected === undefined ? undefined : null;
     }
 
     var value = node.getAttribute(name);
+
+    {
+      if (value === '' && expected === true) {
+        return true;
+      }
+    }
 
     {
       checkAttributeStringCoercion(expected, name);
@@ -2597,6 +2407,47 @@ function setValueForNamespacedAttribute(node, namespace, name, value) {
   }
 
   node.setAttributeNS(namespace, name, '' + value);
+}
+function setValueForPropertyOnCustomComponent(node, name, value) {
+  if (name[0] === 'o' && name[1] === 'n') {
+    var useCapture = name.endsWith('Capture');
+    var eventName = name.slice(2, useCapture ? name.length - 7 : undefined);
+    var prevProps = getFiberCurrentPropsFromNode(node);
+    var prevValue = prevProps != null ? prevProps[name] : null;
+
+    if (typeof prevValue === 'function') {
+      node.removeEventListener(eventName, prevValue, useCapture);
+    }
+
+    if (typeof value === 'function') {
+      if (typeof prevValue !== 'function' && prevValue !== null) {
+        // If we previously assigned a non-function type into this node, then
+        // remove it when switching to event listener mode.
+        if (name in node) {
+          node[name] = null;
+        } else if (node.hasAttribute(name)) {
+          node.removeAttribute(name);
+        }
+      } // $FlowFixMe[incompatible-cast] value can't be casted to EventListener.
+
+
+      node.addEventListener(eventName, value, useCapture);
+      return;
+    }
+  }
+
+  if (name in node) {
+    node[name] = value;
+    return;
+  }
+
+  if (value === true) {
+    node.setAttribute(name, '');
+    return;
+  } // From here, it's the same as any attribute
+
+
+  setValueForAttribute(node, name, value);
 }
 
 var ReactCurrentDispatcher$2 = ReactSharedInternals.ReactCurrentDispatcher;
@@ -3080,6 +2931,12 @@ function getComponentNameFromType(type) {
           }
         }
 
+      case REACT_SERVER_CONTEXT_TYPE:
+        {
+          var context2 = type;
+          return (context2.displayName || context2._globalName) + '.Provider';
+        }
+
     }
   }
 
@@ -3182,6 +3039,11 @@ function getComponentNameFromFiber(fiber) {
       }
 
       break;
+
+    case LegacyHiddenComponent:
+      {
+        return 'LegacyHidden';
+      }
 
   }
 
@@ -4336,51 +4198,7 @@ function validateTextNesting(childText, parentTag) {
 var MATH_NAMESPACE = 'http://www.w3.org/1998/Math/MathML';
 var SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
-var reusableSVGContainer;
-
-function setInnerHTMLImpl(node, html) {
-  if (node.namespaceURI === SVG_NAMESPACE) {
-
-    if (!('innerHTML' in node)) {
-      // IE does not have innerHTML for SVG nodes, so instead we inject the
-      // new markup in a temp node and then move the child nodes across into
-      // the target node
-      reusableSVGContainer = reusableSVGContainer || document.createElement('div');
-      reusableSVGContainer.innerHTML = '<svg>' + html.valueOf().toString() + '</svg>';
-      var svgNode = reusableSVGContainer.firstChild;
-
-      while (node.firstChild) {
-        node.removeChild(node.firstChild);
-      } // $FlowFixMe[incompatible-use]
-      // $FlowFixMe[incompatible-type]
-
-
-      while (svgNode.firstChild) {
-        node.appendChild(svgNode.firstChild);
-      }
-
-      return;
-    }
-  }
-
-  node.innerHTML = html;
-}
-
-var setInnerHTML = setInnerHTMLImpl; // $FlowFixMe[cannot-resolve-name]
-
-if (typeof MSApp !== 'undefined' && MSApp.execUnsafeLocalFunction) {
-  /**
-   * Create a function which has 'unsafe' privileges (required by windows8 apps)
-   */
-  setInnerHTML = function (node, html) {
-    // $FlowFixMe[cannot-resolve-name]
-    return MSApp.execUnsafeLocalFunction(function () {
-      return setInnerHTMLImpl(node, html);
-    });
-  };
-}
-
-var setInnerHTML$1 = setInnerHTML;
+if (typeof MSApp !== 'undefined' && MSApp.execUnsafeLocalFunction) ;
 
 /**
  * HTML nodeType values that represent the type of the node
@@ -5667,6 +5485,13 @@ function validateProperty(tagName, name, value, eventRegistry) {
           return true;
         }
 
+      case 'innerText': // Properties
+
+      case 'textContent':
+        {
+          return true;
+        }
+
     }
 
     switch (typeof value) {
@@ -5859,6 +5684,8 @@ function sanitizeURL(url) {
 var IS_EVENT_HANDLE_NON_MANAGED_NODE = 1;
 var IS_NON_DELEGATED = 1 << 1;
 var IS_CAPTURE_PHASE = 1 << 2;
+var IS_LEGACY_FB_SUPPORT_MODE = 1 << 4;
+var SHOULD_NOT_DEFER_CLICK_FOR_FB_SUPPORT_MODE = IS_LEGACY_FB_SUPPORT_MODE | IS_CAPTURE_PHASE; // We do not want to defer if the event system has already been
 // set to LEGACY_FB_SUPPORT. LEGACY_FB_SUPPORT only gets set when
 // we call willDeferLaterForLegacyFBSupport, thus not bailing out
 // will result in endless cycles like an infinite loop.
@@ -5919,7 +5746,7 @@ var restoreQueue = null;
 function restoreStateOfTarget(target) {
   // We perform this translation at the end of the event loop so that we
   // always receive the correct fiber here
-  var internalInstance = getInstanceFromNode(target);
+  var internalInstance = getInstanceFromNode$1(target);
 
   if (!internalInstance) {
     // Unmounted
@@ -6294,6 +6121,25 @@ function findCurrentHostFiberWithNoPortalsImpl(node) {
   }
 
   return null;
+}
+
+function isFiberSuspenseAndTimedOut(fiber) {
+  var memoizedState = fiber.memoizedState;
+  return fiber.tag === SuspenseComponent && memoizedState !== null && memoizedState.dehydrated === null;
+}
+function doesFiberContain(parentFiber, childFiber) {
+  var node = childFiber;
+  var parentFiberAlternate = parentFiber.alternate;
+
+  while (node !== null) {
+    if (node === parentFiber || node === parentFiberAlternate) {
+      return true;
+    }
+
+    node = node.return;
+  }
+
+  return false;
 }
 
 var loggedTypeFailures = {};
@@ -11356,7 +11202,8 @@ var createFunctionComponentUpdateQueue;
     return {
       lastEffect: null,
       events: null,
-      stores: null
+      stores: null,
+      memoCache: null
     };
   };
 }
@@ -11400,6 +11247,70 @@ function use(usable) {
 
 
   throw new Error('An unsupported type was passed to use(): ' + String(usable));
+}
+
+function useMemoCache(size) {
+  var memoCache = null; // Fast-path, load memo cache from wip fiber if already prepared
+
+  var updateQueue = currentlyRenderingFiber$1.updateQueue;
+
+  if (updateQueue !== null) {
+    memoCache = updateQueue.memoCache;
+  } // Otherwise clone from the current fiber
+
+
+  if (memoCache == null) {
+    var current = currentlyRenderingFiber$1.alternate;
+
+    if (current !== null) {
+      var currentUpdateQueue = current.updateQueue;
+
+      if (currentUpdateQueue !== null) {
+        var currentMemoCache = currentUpdateQueue.memoCache;
+
+        if (currentMemoCache != null) {
+          memoCache = {
+            data: currentMemoCache.data.map(function (array) {
+              return array.slice();
+            }),
+            index: 0
+          };
+        }
+      }
+    }
+  } // Finally fall back to allocating a fresh instance of the cache
+
+
+  if (memoCache == null) {
+    memoCache = {
+      data: [],
+      index: 0
+    };
+  }
+
+  if (updateQueue === null) {
+    updateQueue = createFunctionComponentUpdateQueue();
+    currentlyRenderingFiber$1.updateQueue = updateQueue;
+  }
+
+  updateQueue.memoCache = memoCache;
+  var data = memoCache.data[memoCache.index];
+
+  if (data === undefined) {
+    data = memoCache.data[memoCache.index] = new Array(size);
+
+    for (var i = 0; i < size; i++) {
+      data[i] = REACT_MEMO_CACHE_SENTINEL;
+    }
+  } else if (data.length !== size) {
+    // TODO: consider warning or throwing here
+    {
+      error('Expected a constant size argument for each invocation of useMemoCache. ' + 'The previous cache was allocated with size %s but size %s was requested.', data.length, size);
+    }
+  }
+
+  memoCache.index++;
+  return data;
 }
 
 function basicStateReducer(state, action) {
@@ -12323,6 +12234,58 @@ function updateEffect(create, deps) {
   updateEffectImpl(Passive$1, Passive, create, deps);
 }
 
+function useEffectEventImpl(payload) {
+  currentlyRenderingFiber$1.flags |= Update;
+  var componentUpdateQueue = currentlyRenderingFiber$1.updateQueue;
+
+  if (componentUpdateQueue === null) {
+    componentUpdateQueue = createFunctionComponentUpdateQueue();
+    currentlyRenderingFiber$1.updateQueue = componentUpdateQueue;
+    componentUpdateQueue.events = [payload];
+  } else {
+    var events = componentUpdateQueue.events;
+
+    if (events === null) {
+      componentUpdateQueue.events = [payload];
+    } else {
+      events.push(payload);
+    }
+  }
+}
+
+function mountEvent(callback) {
+  var hook = mountWorkInProgressHook();
+  var ref = {
+    impl: callback
+  };
+  hook.memoizedState = ref; // $FlowIgnore[incompatible-return]
+
+  return function eventFn() {
+    if (isInvalidExecutionContextForEventFunction()) {
+      throw new Error("A function wrapped in useEffectEvent can't be called during rendering.");
+    }
+
+    return ref.impl.apply(undefined, arguments);
+  };
+}
+
+function updateEvent(callback) {
+  var hook = updateWorkInProgressHook();
+  var ref = hook.memoizedState;
+  useEffectEventImpl({
+    ref: ref,
+    nextImpl: callback
+  }); // $FlowIgnore[incompatible-return]
+
+  return function eventFn() {
+    if (isInvalidExecutionContextForEventFunction()) {
+      throw new Error("A function wrapped in useEffectEvent can't be called during rendering.");
+    }
+
+    return ref.impl.apply(undefined, arguments);
+  };
+}
+
 function mountInsertionEffect(create, deps) {
   mountEffectImpl(Update, Insertion, create, deps);
 }
@@ -12469,14 +12432,14 @@ function updateMemo(nextCreate, deps) {
 
 function mountDeferredValue(value, initialValue) {
   var hook = mountWorkInProgressHook();
-  return mountDeferredValueImpl(hook, value);
+  return mountDeferredValueImpl(hook, value, initialValue);
 }
 
 function updateDeferredValue(value, initialValue) {
   var hook = updateWorkInProgressHook();
   var resolvedCurrentHook = currentHook;
   var prevValue = resolvedCurrentHook.memoizedState;
-  return updateDeferredValueImpl(hook, prevValue, value);
+  return updateDeferredValueImpl(hook, prevValue, value, initialValue);
 }
 
 function rerenderDeferredValue(value, initialValue) {
@@ -12484,16 +12447,29 @@ function rerenderDeferredValue(value, initialValue) {
 
   if (currentHook === null) {
     // This is a rerender during a mount.
-    return mountDeferredValueImpl(hook, value);
+    return mountDeferredValueImpl(hook, value, initialValue);
   } else {
     // This is a rerender during an update.
     var prevValue = currentHook.memoizedState;
-    return updateDeferredValueImpl(hook, prevValue, value);
+    return updateDeferredValueImpl(hook, prevValue, value, initialValue);
   }
 }
 
 function mountDeferredValueImpl(hook, value, initialValue) {
-  {
+  if (// When `initialValue` is provided, we defer the initial render even if the
+  // current render is not synchronous.
+  initialValue !== undefined && // However, to avoid waterfalls, we do not defer if this render
+  // was itself spawned by an earlier useDeferredValue. Check if DeferredLane
+  // is part of the render lanes.
+  !includesSomeLane(renderLanes, DeferredLane)) {
+    // Render with the initial value
+    hook.memoizedState = initialValue; // Schedule a deferred render to switch to the final value.
+
+    var deferredLane = requestDeferredLane();
+    currentlyRenderingFiber$1.lanes = mergeLanes(currentlyRenderingFiber$1.lanes, deferredLane);
+    markSkippedUpdateLanes(deferredLane);
+    return initialValue;
+  } else {
     hook.memoizedState = value;
     return value;
   }
@@ -12510,7 +12486,7 @@ function updateDeferredValueImpl(hook, prevValue, value, initialValue) {
     if (isCurrentTreeHidden()) {
       // Revealing a prerendered tree is considered the same as mounting new
       // one, so we reuse the "mount" path in this case.
-      var resultValue = mountDeferredValueImpl(hook, value); // Unlike during an actual mount, we need to mark this as an update if
+      var resultValue = mountDeferredValueImpl(hook, value, initialValue); // Unlike during an actual mount, we need to mark this as an update if
       // the value changed.
 
       if (!objectIs(resultValue, prevValue)) {
@@ -12791,9 +12767,9 @@ function refreshCache(fiber, seedKey, seedValue) {
 
           if (seedKey !== null && seedKey !== undefined && root !== null) {
             {
-              {
-                error('The seed argument is not enabled outside experimental channels.');
-              }
+              // Seed the cache with the value passed by the caller. This could be
+              // from a server mutation, or it could be a streaming response.
+              seededCache.data.set(seedKey, seedValue);
             }
           }
 
@@ -12837,8 +12813,6 @@ function dispatchReducerAction(fiber, queue, action) {
       entangleTransitionUpdate(root, queue, lane);
     }
   }
-
-  markUpdateInDevTools(fiber, lane);
 }
 
 function dispatchSetState(fiber, queue, action) {
@@ -12912,8 +12886,6 @@ function dispatchSetState(fiber, queue, action) {
       entangleTransitionUpdate(root, queue, lane);
     }
   }
-
-  markUpdateInDevTools(fiber, lane);
 }
 
 function dispatchOptimisticSetState(fiber, throwIfDuringRender, queue, action) {
@@ -12983,8 +12955,6 @@ function dispatchOptimisticSetState(fiber, throwIfDuringRender, queue, action) {
       // entangleTransitionUpdate here.
     }
   }
-
-  markUpdateInDevTools(fiber, SyncLane);
 }
 
 function isRenderPhaseUpdate(fiber) {
@@ -13030,13 +13000,6 @@ function entangleTransitionUpdate(root, queue, lane) {
   }
 }
 
-function markUpdateInDevTools(fiber, lane, action) {
-
-  {
-    markStateUpdateScheduled(fiber, lane);
-  }
-}
-
 var ContextOnlyDispatcher = {
   readContext: readContext,
   use: use,
@@ -13059,6 +13022,14 @@ var ContextOnlyDispatcher = {
 
 {
   ContextOnlyDispatcher.useCacheRefresh = throwInvalidHookError;
+}
+
+{
+  ContextOnlyDispatcher.useMemoCache = throwInvalidHookError;
+}
+
+{
+  ContextOnlyDispatcher.useEffectEvent = throwInvalidHookError;
 }
 
 {
@@ -13177,7 +13148,7 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
     useDeferredValue: function (value, initialValue) {
       currentHookNameInDev = 'useDeferredValue';
       mountHookTypesDev();
-      return mountDeferredValue(value);
+      return mountDeferredValue(value, initialValue);
     },
     useTransition: function () {
       currentHookNameInDev = 'useTransition';
@@ -13201,6 +13172,18 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
       currentHookNameInDev = 'useCacheRefresh';
       mountHookTypesDev();
       return mountRefresh();
+    };
+  }
+
+  {
+    HooksDispatcherOnMountInDEV.useMemoCache = useMemoCache;
+  }
+
+  {
+    HooksDispatcherOnMountInDEV.useEffectEvent = function useEffectEvent(callback) {
+      currentHookNameInDev = 'useEffectEvent';
+      mountHookTypesDev();
+      return mountEvent(callback);
     };
   }
 
@@ -13306,7 +13289,7 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
     useDeferredValue: function (value, initialValue) {
       currentHookNameInDev = 'useDeferredValue';
       updateHookTypesDev();
-      return mountDeferredValue(value);
+      return mountDeferredValue(value, initialValue);
     },
     useTransition: function () {
       currentHookNameInDev = 'useTransition';
@@ -13330,6 +13313,18 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
       currentHookNameInDev = 'useCacheRefresh';
       updateHookTypesDev();
       return mountRefresh();
+    };
+  }
+
+  {
+    HooksDispatcherOnMountWithHookTypesInDEV.useMemoCache = useMemoCache;
+  }
+
+  {
+    HooksDispatcherOnMountWithHookTypesInDEV.useEffectEvent = function useEffectEvent(callback) {
+      currentHookNameInDev = 'useEffectEvent';
+      updateHookTypesDev();
+      return mountEvent(callback);
     };
   }
 
@@ -13435,7 +13430,7 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
     useDeferredValue: function (value, initialValue) {
       currentHookNameInDev = 'useDeferredValue';
       updateHookTypesDev();
-      return updateDeferredValue(value);
+      return updateDeferredValue(value, initialValue);
     },
     useTransition: function () {
       currentHookNameInDev = 'useTransition';
@@ -13459,6 +13454,18 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
       currentHookNameInDev = 'useCacheRefresh';
       updateHookTypesDev();
       return updateRefresh();
+    };
+  }
+
+  {
+    HooksDispatcherOnUpdateInDEV.useMemoCache = useMemoCache;
+  }
+
+  {
+    HooksDispatcherOnUpdateInDEV.useEffectEvent = function useEffectEvent(callback) {
+      currentHookNameInDev = 'useEffectEvent';
+      updateHookTypesDev();
+      return updateEvent(callback);
     };
   }
 
@@ -13564,7 +13571,7 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
     useDeferredValue: function (value, initialValue) {
       currentHookNameInDev = 'useDeferredValue';
       updateHookTypesDev();
-      return rerenderDeferredValue(value);
+      return rerenderDeferredValue(value, initialValue);
     },
     useTransition: function () {
       currentHookNameInDev = 'useTransition';
@@ -13588,6 +13595,18 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
       currentHookNameInDev = 'useCacheRefresh';
       updateHookTypesDev();
       return updateRefresh();
+    };
+  }
+
+  {
+    HooksDispatcherOnRerenderInDEV.useMemoCache = useMemoCache;
+  }
+
+  {
+    HooksDispatcherOnRerenderInDEV.useEffectEvent = function useEffectEvent(callback) {
+      currentHookNameInDev = 'useEffectEvent';
+      updateHookTypesDev();
+      return updateEvent(callback);
     };
   }
 
@@ -13709,7 +13728,7 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
       currentHookNameInDev = 'useDeferredValue';
       warnInvalidHookAccess();
       mountHookTypesDev();
-      return mountDeferredValue(value);
+      return mountDeferredValue(value, initialValue);
     },
     useTransition: function () {
       currentHookNameInDev = 'useTransition';
@@ -13736,6 +13755,22 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
       currentHookNameInDev = 'useCacheRefresh';
       mountHookTypesDev();
       return mountRefresh();
+    };
+  }
+
+  {
+    InvalidNestedHooksDispatcherOnMountInDEV.useMemoCache = function (size) {
+      warnInvalidHookAccess();
+      return useMemoCache(size);
+    };
+  }
+
+  {
+    InvalidNestedHooksDispatcherOnMountInDEV.useEffectEvent = function useEffectEvent(callback) {
+      currentHookNameInDev = 'useEffectEvent';
+      warnInvalidHookAccess();
+      mountHookTypesDev();
+      return mountEvent(callback);
     };
   }
 
@@ -13859,7 +13894,7 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
       currentHookNameInDev = 'useDeferredValue';
       warnInvalidHookAccess();
       updateHookTypesDev();
-      return updateDeferredValue(value);
+      return updateDeferredValue(value, initialValue);
     },
     useTransition: function () {
       currentHookNameInDev = 'useTransition';
@@ -13886,6 +13921,22 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
       currentHookNameInDev = 'useCacheRefresh';
       updateHookTypesDev();
       return updateRefresh();
+    };
+  }
+
+  {
+    InvalidNestedHooksDispatcherOnUpdateInDEV.useMemoCache = function (size) {
+      warnInvalidHookAccess();
+      return useMemoCache(size);
+    };
+  }
+
+  {
+    InvalidNestedHooksDispatcherOnUpdateInDEV.useEffectEvent = function useEffectEvent(callback) {
+      currentHookNameInDev = 'useEffectEvent';
+      warnInvalidHookAccess();
+      updateHookTypesDev();
+      return updateEvent(callback);
     };
   }
 
@@ -14009,7 +14060,7 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
       currentHookNameInDev = 'useDeferredValue';
       warnInvalidHookAccess();
       updateHookTypesDev();
-      return rerenderDeferredValue(value);
+      return rerenderDeferredValue(value, initialValue);
     },
     useTransition: function () {
       currentHookNameInDev = 'useTransition';
@@ -14036,6 +14087,22 @@ var InvalidNestedHooksDispatcherOnRerenderInDEV = null;
       currentHookNameInDev = 'useCacheRefresh';
       updateHookTypesDev();
       return updateRefresh();
+    };
+  }
+
+  {
+    InvalidNestedHooksDispatcherOnRerenderInDEV.useMemoCache = function (size) {
+      warnInvalidHookAccess();
+      return useMemoCache(size);
+    };
+  }
+
+  {
+    InvalidNestedHooksDispatcherOnRerenderInDEV.useEffectEvent = function useEffectEvent(callback) {
+      currentHookNameInDev = 'useEffectEvent';
+      warnInvalidHookAccess();
+      updateHookTypesDev();
+      return updateEvent(callback);
     };
   }
 
@@ -14371,10 +14438,6 @@ var classComponentUpdater = {
       scheduleUpdateOnFiber(root, fiber, lane);
       entangleTransitions(root, fiber, lane);
     }
-
-    {
-      markStateUpdateScheduled(fiber, lane);
-    }
   },
   enqueueReplaceState: function (inst, payload, callback) {
     var fiber = get(inst);
@@ -14397,10 +14460,6 @@ var classComponentUpdater = {
       scheduleUpdateOnFiber(root, fiber, lane);
       entangleTransitions(root, fiber, lane);
     }
-
-    {
-      markStateUpdateScheduled(fiber, lane);
-    }
   },
   // $FlowFixMe[missing-local-annot]
   enqueueForceUpdate: function (inst, callback) {
@@ -14422,10 +14481,6 @@ var classComponentUpdater = {
     if (root !== null) {
       scheduleUpdateOnFiber(root, fiber, lane);
       entangleTransitions(root, fiber, lane);
-    }
-
-    {
-      markForceUpdateScheduled(fiber, lane);
     }
   }
 };
@@ -15339,6 +15394,12 @@ function throwException(root, returnFiber, sourceFiber, value, rootRenderLanes) 
   }
 
   if (value !== null && typeof value === 'object') {
+    if (value.$$typeof === REACT_POSTPONE_TYPE) {
+      // Act as if this is an infinitely suspending promise.
+      value = {
+        then: function () {}
+      };
+    }
 
     if (typeof value.then === 'function') {
       // This is a wakeable. The component suspended.
@@ -15656,19 +15717,11 @@ function updateForwardRef(current, workInProgress, Component, nextProps, renderL
   prepareToReadContext(workInProgress, renderLanes);
 
   {
-    markComponentRenderStarted(workInProgress);
-  }
-
-  {
     ReactCurrentOwner$2.current = workInProgress;
     setIsRendering(true);
     nextChildren = renderWithHooks(current, workInProgress, render, nextProps, ref, renderLanes);
     hasId = checkDidRenderIdHook();
     setIsRendering(false);
-  }
-
-  {
-    markComponentRenderStopped();
   }
 
   if (current !== null && !didReceiveUpdate) {
@@ -15869,7 +15922,7 @@ function updateOffscreenComponent(current, workInProgress, renderLanes) {
   var prevState = current !== null ? current.memoizedState : null;
   markRef$1(current, workInProgress);
 
-  if (nextProps.mode === 'hidden' || enableLegacyHidden  || nextIsDetached) {
+  if (nextProps.mode === 'hidden' || nextProps.mode === 'unstable-defer-without-hiding' || nextIsDetached) {
     // Rendering a hidden tree.
     var didSuspend = (workInProgress.flags & DidCapture) !== NoFlags$1;
 
@@ -16026,6 +16079,11 @@ function deferHiddenOffscreenComponent(current, workInProgress, nextBaseLanes, r
 
   return null;
 } // Note: These happen to have identical begin phases, for now. We shouldn't hold
+// ourselves to this constraint, though. If the behavior diverges, we should
+// fork the function.
+
+
+var updateLegacyHiddenComponent = updateOffscreenComponent;
 
 function updateCacheComponent(current, workInProgress, renderLanes) {
 
@@ -16154,19 +16212,11 @@ function updateFunctionComponent(current, workInProgress, Component, nextProps, 
   prepareToReadContext(workInProgress, renderLanes);
 
   {
-    markComponentRenderStarted(workInProgress);
-  }
-
-  {
     ReactCurrentOwner$2.current = workInProgress;
     setIsRendering(true);
     nextChildren = renderWithHooks(current, workInProgress, Component, nextProps, context, renderLanes);
     hasId = checkDidRenderIdHook();
     setIsRendering(false);
-  }
-
-  {
-    markComponentRenderStopped();
   }
 
   if (current !== null && !didReceiveUpdate) {
@@ -16190,16 +16240,8 @@ function replayFunctionComponent(current, workInProgress, nextProps, Component, 
   // updateFunctionComponent that reuses the hooks from the previous attempt.
   prepareToReadContext(workInProgress, renderLanes);
 
-  {
-    markComponentRenderStarted(workInProgress);
-  }
-
   var nextChildren = replaySuspendedComponentWithHooks(current, workInProgress, Component, nextProps, secondArg);
   var hasId = checkDidRenderIdHook();
-
-  {
-    markComponentRenderStopped();
-  }
 
   if (current !== null && !didReceiveUpdate) {
     bailoutHooks(current, workInProgress, renderLanes);
@@ -16338,9 +16380,6 @@ function finishClassComponent(current, workInProgress, Component, shouldUpdate, 
       stopProfilerTimerIfRunning();
     }
   } else {
-    {
-      markComponentRenderStarted(workInProgress);
-    }
 
     {
       setIsRendering(true);
@@ -16357,10 +16396,6 @@ function finishClassComponent(current, workInProgress, Component, shouldUpdate, 
       }
 
       setIsRendering(false);
-    }
-
-    {
-      markComponentRenderStopped();
     }
   } // React DevTools reads this flag.
 
@@ -16738,10 +16773,6 @@ function mountIndeterminateComponent(_current, workInProgress, Component, render
   var hasId;
 
   {
-    markComponentRenderStarted(workInProgress);
-  }
-
-  {
     if (Component.prototype && typeof Component.prototype.render === 'function') {
       var componentName = getComponentNameFromType(Component) || 'Unknown';
 
@@ -16762,10 +16793,6 @@ function mountIndeterminateComponent(_current, workInProgress, Component, render
     hasId = checkDidRenderIdHook();
     setIsRendering(false);
   }
-
-  {
-    markComponentRenderStopped();
-  } // React DevTools reads this flag.
 
 
   workInProgress.flags |= PerformedWork;
@@ -17058,6 +17085,28 @@ function updateSuspenseComponent(current, workInProgress, renderLanes) {
       workInProgress.memoizedState = SUSPENDED_MARKER;
 
       return fallbackFragment;
+    } else if (typeof nextProps.unstable_expectedLoadTime === 'number') {
+      // This is a CPU-bound tree. Skip this tree and show a placeholder to
+      // unblock the surrounding content. Then immediately retry after the
+      // initial commit.
+      pushFallbackTreeSuspenseHandler(workInProgress);
+
+      var _fallbackFragment = mountSuspenseFallbackChildren(workInProgress, nextPrimaryChildren, nextFallbackChildren, renderLanes);
+
+      var _primaryChildFragment = workInProgress.child;
+      _primaryChildFragment.memoizedState = mountSuspenseOffscreenState(renderLanes);
+      workInProgress.memoizedState = SUSPENDED_MARKER; // TODO: Transition Tracing is not yet implemented for CPU Suspense.
+      // Since nothing actually suspended, there will nothing to ping this to
+      // get it started back up to attempt the next item. While in terms of
+      // priority this work has the same priority as this current render, it's
+      // not part of the same transition once the transition has committed. If
+      // it's sync, we still want to yield so that it can be painted.
+      // Conceptually, this is really the same as pinging. We can use any
+      // RetryLane even if it's the one currently rendering since we're leaving
+      // it behind on this node.
+
+      workInProgress.lanes = SomeRetryLane;
+      return _fallbackFragment;
     } else {
       pushPrimaryTreeSuspenseHandler(workInProgress);
       return mountSuspensePrimaryChildren(workInProgress, nextPrimaryChildren);
@@ -17370,7 +17419,7 @@ function updateDehydratedSuspenseComponent(current, workInProgress, didSuspend, 
 
       var capturedValue = null; // TODO: Figure out a better signal than encoding a magic digest value.
 
-      {
+      if (digest !== 'POSTPONE') {
         var error;
 
         if (message) {
@@ -17933,10 +17982,6 @@ function updateContextConsumer(current, workInProgress, renderLanes) {
   prepareToReadContext(workInProgress, renderLanes);
   var newValue = readContext(context);
 
-  {
-    markComponentRenderStarted(workInProgress);
-  }
-
   var newChildren;
 
   {
@@ -17946,13 +17991,16 @@ function updateContextConsumer(current, workInProgress, renderLanes) {
     setIsRendering(false);
   }
 
-  {
-    markComponentRenderStopped();
-  } // React DevTools reads this flag.
-
 
   workInProgress.flags |= PerformedWork;
   reconcileChildren(current, workInProgress, newChildren, renderLanes);
+  return workInProgress.child;
+}
+
+function updateScopeComponent(current, workInProgress, renderLanes) {
+  var nextProps = workInProgress.pendingProps;
+  var nextChildren = nextProps.children;
+  reconcileChildren(current, workInProgress, nextChildren, renderLanes);
   return workInProgress.child;
 }
 
@@ -18467,8 +18515,9 @@ function beginWork$1(current, workInProgress, renderLanes) {
 
     case ScopeComponent:
       {
-
-        break;
+        {
+          return updateScopeComponent(current, workInProgress, renderLanes);
+        }
       }
 
     case OffscreenComponent:
@@ -18478,8 +18527,9 @@ function beginWork$1(current, workInProgress, renderLanes) {
 
     case LegacyHiddenComponent:
       {
-
-        break;
+        {
+          return updateLegacyHiddenComponent(current, workInProgress, renderLanes);
+        }
       }
 
     case CacheComponent:
@@ -18552,7 +18602,9 @@ function popProvider(context, providerFiber) {
   var currentValue = valueCursor.current;
 
   {
-    {
+    if (currentValue === REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED) {
+      context._currentValue = context._defaultValue;
+    } else {
       context._currentValue = currentValue;
     }
 
@@ -18999,9 +19051,194 @@ function getOffscreenDeferredCache() {
   };
 }
 
+function getSuspenseFallbackChild(fiber) {
+  return fiber.child.sibling.child;
+}
+
+var emptyObject = {};
+
+function collectScopedNodes(node, fn, scopedNodes) {
+  {
+    if (node.tag === HostComponent) {
+      var type = node.type,
+          memoizedProps = node.memoizedProps,
+          stateNode = node.stateNode;
+      var instance = getPublicInstance(stateNode);
+
+      if (instance !== null && fn(type, memoizedProps || emptyObject, instance) === true) {
+        scopedNodes.push(instance);
+      }
+    }
+
+    var child = node.child;
+
+    if (isFiberSuspenseAndTimedOut(node)) {
+      child = getSuspenseFallbackChild(node);
+    }
+
+    if (child !== null) {
+      collectScopedNodesFromChildren(child, fn, scopedNodes);
+    }
+  }
+}
+
+function collectFirstScopedNode(node, fn) {
+  {
+    if (node.tag === HostComponent) {
+      var type = node.type,
+          memoizedProps = node.memoizedProps,
+          stateNode = node.stateNode;
+      var instance = getPublicInstance(stateNode);
+
+      if (instance !== null && fn(type, memoizedProps, instance) === true) {
+        return instance;
+      }
+    }
+
+    var child = node.child;
+
+    if (isFiberSuspenseAndTimedOut(node)) {
+      child = getSuspenseFallbackChild(node);
+    }
+
+    if (child !== null) {
+      return collectFirstScopedNodeFromChildren(child, fn);
+    }
+  }
+
+  return null;
+}
+
+function collectScopedNodesFromChildren(startingChild, fn, scopedNodes) {
+  var child = startingChild;
+
+  while (child !== null) {
+    collectScopedNodes(child, fn, scopedNodes);
+    child = child.sibling;
+  }
+}
+
+function collectFirstScopedNodeFromChildren(startingChild, fn) {
+  var child = startingChild;
+
+  while (child !== null) {
+    var scopedNode = collectFirstScopedNode(child, fn);
+
+    if (scopedNode !== null) {
+      return scopedNode;
+    }
+
+    child = child.sibling;
+  }
+
+  return null;
+}
+
+function collectNearestContextValues(node, context, childContextValues) {
+  if (node.tag === ContextProvider && node.type._context === context) {
+    var contextValue = node.memoizedProps.value;
+    childContextValues.push(contextValue);
+  } else {
+    var child = node.child;
+
+    if (isFiberSuspenseAndTimedOut(node)) {
+      child = getSuspenseFallbackChild(node);
+    }
+
+    if (child !== null) {
+      collectNearestChildContextValues(child, context, childContextValues);
+    }
+  }
+}
+
+function collectNearestChildContextValues(startingChild, context, childContextValues) {
+  var child = startingChild;
+
+  while (child !== null) {
+    collectNearestContextValues(child, context, childContextValues);
+    child = child.sibling;
+  }
+}
+
+function DO_NOT_USE_queryAllNodes(fn) {
+  var currentFiber = getInstanceFromScope(this);
+
+  if (currentFiber === null) {
+    return null;
+  }
+
+  var child = currentFiber.child;
+  var scopedNodes = [];
+
+  if (child !== null) {
+    collectScopedNodesFromChildren(child, fn, scopedNodes);
+  }
+
+  return scopedNodes.length === 0 ? null : scopedNodes;
+}
+
+function DO_NOT_USE_queryFirstNode(fn) {
+  var currentFiber = getInstanceFromScope(this);
+
+  if (currentFiber === null) {
+    return null;
+  }
+
+  var child = currentFiber.child;
+
+  if (child !== null) {
+    return collectFirstScopedNodeFromChildren(child, fn);
+  }
+
+  return null;
+}
+
+function containsNode$1(node) {
+  var fiber = getInstanceFromNode(node);
+
+  while (fiber !== null) {
+    if (fiber.tag === ScopeComponent && fiber.stateNode === this) {
+      return true;
+    }
+
+    fiber = fiber.return;
+  }
+
+  return false;
+}
+
+function getChildContextValues(context) {
+  var currentFiber = getInstanceFromScope(this);
+
+  if (currentFiber === null) {
+    return [];
+  }
+
+  var child = currentFiber.child;
+  var childContextValues = [];
+
+  if (child !== null) {
+    collectNearestChildContextValues(child, context, childContextValues);
+  }
+
+  return childContextValues;
+}
+
+function createScopeInstance() {
+  return {
+    DO_NOT_USE_queryAllNodes: DO_NOT_USE_queryAllNodes,
+    DO_NOT_USE_queryFirstNode: DO_NOT_USE_queryFirstNode,
+    containsNode: containsNode$1,
+    getChildContextValues: getChildContextValues
+  };
+}
+
+/**
+ * Tag the fiber with an update effect. This turns a Placement into
+ * a PlacementAndUpdate.
+ */
+
 function markUpdate(workInProgress) {
-  // Tag the fiber with an update effect. This turns a Placement into
-  // a PlacementAndUpdate.
   workInProgress.flags |= Update;
 }
 
@@ -20060,8 +20297,29 @@ function completeWork(current, workInProgress, renderLanes) {
 
     case ScopeComponent:
       {
+        {
+          if (current === null) {
+            var scopeInstance = createScopeInstance();
+            workInProgress.stateNode = scopeInstance;
+            prepareScopeUpdate(scopeInstance, workInProgress);
 
-        break;
+            if (workInProgress.ref !== null) {
+              markRef(workInProgress);
+              markUpdate(workInProgress);
+            }
+          } else {
+            if (workInProgress.ref !== null) {
+              markUpdate(workInProgress);
+            }
+
+            if (current.ref !== workInProgress.ref) {
+              markRef(workInProgress);
+            }
+          }
+
+          bubbleProperties(workInProgress);
+          return null;
+        }
       }
 
     case OffscreenComponent:
@@ -20072,7 +20330,7 @@ function completeWork(current, workInProgress, renderLanes) {
         var _nextState = workInProgress.memoizedState;
         var nextIsHidden = _nextState !== null; // Schedule a Visibility effect if the visibility has changed
 
-        {
+        if (workInProgress.tag === LegacyHiddenComponent) ; else {
           if (current !== null) {
             var _prevState = current.memoizedState;
             var prevIsHidden = _prevState !== null;
@@ -20100,7 +20358,7 @@ function completeWork(current, workInProgress, renderLanes) {
             // If so, we need to hide those nodes in the commit phase, so
             // schedule a visibility effect.
 
-            if (workInProgress.subtreeFlags & (Placement | Update)) {
+            if ((workInProgress.tag !== LegacyHiddenComponent) && workInProgress.subtreeFlags & (Placement | Update)) {
               workInProgress.flags |= Visibility;
             }
           }
@@ -20764,20 +21022,36 @@ function safelyCallDestroy(current, nearestMountedAncestor, destroy) {
     captureCommitPhaseError(current, nearestMountedAncestor, error);
   }
 }
+
+var focusedInstanceHandle = null;
 var shouldFireAfterActiveInstanceBlur = false;
 function commitBeforeMutationEffects(root, firstChild) {
-  prepareForCommit();
+  focusedInstanceHandle = prepareForCommit();
   nextEffect = firstChild;
   commitBeforeMutationEffects_begin(); // We no longer need to track the active instance fiber
 
   var shouldFire = shouldFireAfterActiveInstanceBlur;
   shouldFireAfterActiveInstanceBlur = false;
+  focusedInstanceHandle = null;
   return shouldFire;
 }
 
 function commitBeforeMutationEffects_begin() {
   while (nextEffect !== null) {
     var fiber = nextEffect; // This phase is only used for beforeActiveInstanceBlur.
+    // Let's skip the whole loop if it's off.
+
+    {
+      // TODO: Should wrap this in flags check, too, as optimization
+      var deletions = fiber.deletions;
+
+      if (deletions !== null) {
+        for (var i = 0; i < deletions.length; i++) {
+          var deletion = deletions[i];
+          commitBeforeMutationEffectsDeletion(deletion);
+        }
+      }
+    }
 
     var child = fiber.child;
 
@@ -20818,6 +21092,18 @@ function commitBeforeMutationEffectsOnFiber(finishedWork) {
   var current = finishedWork.alternate;
   var flags = finishedWork.flags;
 
+  {
+    if (!shouldFireAfterActiveInstanceBlur && focusedInstanceHandle !== null) {
+      // Check to see if the focused element was inside of a hidden (Suspense) subtree.
+      // TODO: Move this out of the hot path using a dedicated effect tag.
+      if (finishedWork.tag === SuspenseComponent && isSuspenseBoundaryBeingHidden(current, finishedWork) && // $FlowFixMe[incompatible-call] found when upgrading Flow
+      doesFiberContain(finishedWork, focusedInstanceHandle)) {
+        shouldFireAfterActiveInstanceBlur = true;
+        beforeActiveInstanceBlur(finishedWork);
+      }
+    }
+  }
+
   if ((flags & Snapshot) !== NoFlags$1) {
     setCurrentFiber(finishedWork);
   }
@@ -20825,6 +21111,11 @@ function commitBeforeMutationEffectsOnFiber(finishedWork) {
   switch (finishedWork.tag) {
     case FunctionComponent:
       {
+        {
+          if ((flags & Update) !== NoFlags$1) {
+            commitUseEffectEventMount(finishedWork);
+          }
+        }
 
         break;
       }
@@ -20910,6 +21201,19 @@ function commitBeforeMutationEffectsOnFiber(finishedWork) {
   }
 }
 
+function commitBeforeMutationEffectsDeletion(deletion) {
+  {
+    // TODO (effects) It would be nice to avoid calling doesFiberContain()
+    // Maybe we can repurpose one of the subtreeFlags positions for this instead?
+    // Use it to store which part of the tree the focused instance is in?
+    // This assumes we can safely determine that instance during the "render" phase.
+    if (doesFiberContain(deletion, focusedInstanceHandle)) {
+      shouldFireAfterActiveInstanceBlur = true;
+      beforeActiveInstanceBlur(deletion);
+    }
+  }
+}
+
 function commitHookEffectListUnmount(flags, finishedWork, nearestMountedAncestor) {
   var updateQueue = finishedWork.updateQueue;
   var lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
@@ -20928,14 +21232,6 @@ function commitHookEffectListUnmount(flags, finishedWork, nearestMountedAncestor
           inst.destroy = undefined;
 
           {
-            if ((flags & Passive) !== NoFlags) {
-              markComponentPassiveEffectUnmountStarted(finishedWork);
-            } else if ((flags & Layout) !== NoFlags) {
-              markComponentLayoutEffectUnmountStarted(finishedWork);
-            }
-          }
-
-          {
             if ((flags & Insertion) !== NoFlags) {
               setIsRunningInsertionEffect(true);
             }
@@ -20946,14 +21242,6 @@ function commitHookEffectListUnmount(flags, finishedWork, nearestMountedAncestor
           {
             if ((flags & Insertion) !== NoFlags) {
               setIsRunningInsertionEffect(false);
-            }
-          }
-
-          {
-            if ((flags & Passive) !== NoFlags) {
-              markComponentPassiveEffectUnmountStopped();
-            } else if ((flags & Layout) !== NoFlags) {
-              markComponentLayoutEffectUnmountStopped();
             }
           }
         }
@@ -20974,13 +21262,6 @@ function commitHookEffectListMount(flags, finishedWork) {
 
     do {
       if ((effect.tag & flags) === flags) {
-        {
-          if ((flags & Passive) !== NoFlags) {
-            markComponentPassiveEffectMountStarted(finishedWork);
-          } else if ((flags & Layout) !== NoFlags) {
-            markComponentLayoutEffectMountStarted(finishedWork);
-          }
-        } // Mount
 
 
         var create = effect.create;
@@ -20998,14 +21279,6 @@ function commitHookEffectListMount(flags, finishedWork) {
         {
           if ((flags & Insertion) !== NoFlags) {
             setIsRunningInsertionEffect(false);
-          }
-        }
-
-        {
-          if ((flags & Passive) !== NoFlags) {
-            markComponentPassiveEffectMountStopped();
-          } else if ((flags & Layout) !== NoFlags) {
-            markComponentLayoutEffectMountStopped();
           }
         }
 
@@ -21038,6 +21311,20 @@ function commitHookEffectListMount(flags, finishedWork) {
 
       effect = effect.next;
     } while (effect !== firstEffect);
+  }
+}
+
+function commitUseEffectEventMount(finishedWork) {
+  var updateQueue = finishedWork.updateQueue;
+  var eventPayloads = updateQueue !== null ? updateQueue.events : null;
+
+  if (eventPayloads !== null) {
+    for (var ii = 0; ii < eventPayloads.length; ii++) {
+      var _eventPayloads$ii = eventPayloads[ii],
+          ref = _eventPayloads$ii.ref,
+          nextImpl = _eventPayloads$ii.nextImpl;
+      ref.impl = nextImpl;
+    }
   }
 }
 
@@ -21563,6 +21850,11 @@ function commitAttachRef(finishedWork) {
         instanceToUse = instance;
     } // Moved outside to ensure DCE works with this flag
 
+
+    if (finishedWork.tag === ScopeComponent) {
+      instanceToUse = instance;
+    }
+
     if (typeof ref === 'function') {
       if (shouldProfile(finishedWork)) {
         try {
@@ -22066,9 +22358,6 @@ function commitDeletionEffectsOnFiber(finishedRoot, nearestMountedAncestor, dele
                     inst.destroy = undefined;
                     safelyCallDestroy(deletedFiber, nearestMountedAncestor, destroy);
                   } else if ((tag & Layout) !== NoFlags) {
-                    {
-                      markComponentLayoutEffectUnmountStarted(deletedFiber);
-                    }
 
                     if (shouldProfile(deletedFiber)) {
                       startLayoutEffectTimer();
@@ -22078,10 +22367,6 @@ function commitDeletionEffectsOnFiber(finishedRoot, nearestMountedAncestor, dele
                     } else {
                       inst.destroy = undefined;
                       safelyCallDestroy(deletedFiber, nearestMountedAncestor, destroy);
-                    }
-
-                    {
-                      markComponentLayoutEffectUnmountStopped();
                     }
                   }
                 }
@@ -22113,6 +22398,9 @@ function commitDeletionEffectsOnFiber(finishedRoot, nearestMountedAncestor, dele
 
     case ScopeComponent:
       {
+        {
+          safelyDetachRef(deletedFiber, nearestMountedAncestor);
+        }
 
         recursivelyTraverseDeletionEffects(finishedRoot, nearestMountedAncestor, deletedFiber);
         return;
@@ -22284,6 +22572,22 @@ function attachSuspenseRetryListeners(finishedWork, wakeables) {
     }
   });
 } // This function detects when a Suspense boundary goes from visible to hidden.
+// It returns false if the boundary is already hidden.
+// TODO: Use an effect tag.
+
+
+function isSuspenseBoundaryBeingHidden(current, finishedWork) {
+  if (current !== null) {
+    var oldState = current.memoizedState;
+
+    if (oldState === null || oldState.dehydrated !== null) {
+      var newState = finishedWork.memoizedState;
+      return newState !== null && newState.dehydrated === null;
+    }
+  }
+
+  return false;
+}
 function commitMutationEffects(root, finishedWork, committedLanes) {
   inProgressLanes = committedLanes;
   inProgressRoot = root;
@@ -22761,6 +23065,24 @@ function commitMutationEffectsOnFiber(finishedWork, root, lanes) {
 
     case ScopeComponent:
       {
+        {
+          recursivelyTraverseMutationEffects(root, finishedWork);
+          commitReconciliationEffects(finishedWork); // TODO: This is a temporary solution that allowed us to transition away
+          // from React Flare on www.
+
+          if (flags & Ref) {
+            if (current !== null) {
+              safelyDetachRef(finishedWork, finishedWork.return);
+            }
+
+            safelyAttachRef(finishedWork, finishedWork.return);
+          }
+
+          if (flags & Update) {
+            var scopeInstance = finishedWork.stateNode;
+            prepareScopeUpdate(scopeInstance, finishedWork);
+          }
+        }
 
         return;
       }
@@ -23190,6 +23512,14 @@ function commitPassiveMountOnFiber(finishedRoot, finishedWork, committedLanes, c
 
     case LegacyHiddenComponent:
       {
+        {
+          recursivelyTraversePassiveMountEffects(finishedRoot, finishedWork, committedLanes, committedTransitions);
+
+          if (flags & Passive$1) {
+            var current = finishedWork.alternate;
+            commitOffscreenPassiveMountEffects(current, finishedWork);
+          }
+        }
 
         break;
       }
@@ -23309,6 +23639,15 @@ includeWorkInProgressEffects) {
 
     case LegacyHiddenComponent:
       {
+        {
+          recursivelyTraverseReconnectPassiveEffects(finishedRoot, finishedWork, committedLanes, committedTransitions, includeWorkInProgressEffects);
+
+          if (includeWorkInProgressEffects && flags & Passive$1) {
+            // TODO: Pass `current` as argument to this function
+            var current = finishedWork.alternate;
+            commitOffscreenPassiveMountEffects(current, finishedWork);
+          }
+        }
 
         break;
       }
@@ -24842,6 +25181,10 @@ function isAlreadyRendering() {
   // the wrong context.
   return (executionContext & (RenderContext | CommitContext)) !== NoContext;
 }
+function isInvalidExecutionContextForEventFunction() {
+  // Used to throw if certain APIs are called from the wrong context.
+  return (executionContext & RenderContext) !== NoContext;
+} // This is called by the HiddenContext module when we enter or leave a
 // hidden subtree. The stack logic is managed there because that's the only
 // place that ever modifies it. Which module it lives in doesn't matter for
 // performance because this function will get inlined regardless
@@ -25013,28 +25356,6 @@ function handleThrow(root, thrownValue) {
     // suspended render.
     stopProfilerTimerIfRunningAndRecordDelta(erroredWork, true);
   }
-
-  {
-    markComponentRenderStopped();
-
-    switch (workInProgressSuspendedReason) {
-      case SuspendedOnError:
-        {
-          markComponentErrored(erroredWork, thrownValue, workInProgressRootRenderLanes);
-          break;
-        }
-
-      case SuspendedOnData:
-      case SuspendedOnImmediate:
-      case SuspendedOnDeprecatedThrowPromise:
-      case SuspendedAndReadyToContinue:
-        {
-          var wakeable = thrownValue;
-          markComponentSuspended(erroredWork, wakeable, workInProgressRootRenderLanes);
-          break;
-        }
-    }
-  }
 }
 
 function shouldRemainOnPreviousScreen() {
@@ -25201,10 +25522,6 @@ function renderRootSync(root, lanes) {
     prepareFreshStack(root, lanes);
   }
 
-  {
-    markRenderStarted(lanes);
-  }
-
   var didSuspendInShell = false;
 
   outer: do {
@@ -25279,10 +25596,6 @@ function renderRootSync(root, lanes) {
     throw new Error('Cannot commit an incomplete root. This error is likely caused by a ' + 'bug in React. Please file an issue.');
   }
 
-  {
-    markRenderStopped();
-  } // Set this to null to indicate there's no in-progress render.
-
 
   workInProgressRoot = null;
   workInProgressRootRenderLanes = NoLanes; // It's safe to process the queue now that the render phase is complete.
@@ -25329,10 +25642,6 @@ function renderRootConcurrent(root, lanes) {
     workInProgressTransitions = getTransitionsForLanes();
     resetRenderTimer();
     prepareFreshStack(root, lanes);
-  }
-
-  {
-    markRenderStarted(lanes);
   }
 
   outer: do {
@@ -25539,17 +25848,9 @@ function renderRootConcurrent(root, lanes) {
 
 
   if (workInProgress !== null) {
-    // Still work remaining.
-    {
-      markRenderYielded();
-    }
 
     return RootInProgress;
   } else {
-    // Completed the tree.
-    {
-      markRenderStopped();
-    } // Set this to null to indicate there's no in-progress render.
 
 
     workInProgressRoot = null;
@@ -25930,15 +26231,7 @@ function commitRootImpl(root, recoverableErrors, transitions, renderPriorityLeve
   var finishedWork = root.finishedWork;
   var lanes = root.finishedLanes;
 
-  {
-    markCommitStarted(lanes);
-  }
-
   if (finishedWork === null) {
-
-    {
-      markCommitStopped();
-    }
 
     return null;
   } else {
@@ -26026,7 +26319,7 @@ function commitRootImpl(root, recoverableErrors, transitions, renderPriorityLeve
     // state of the host tree right before we mutate it. This is where
     // getSnapshotBeforeUpdate is called.
 
-    commitBeforeMutationEffects(root, finishedWork);
+    var shouldFireAfterActiveInstanceBlur = commitBeforeMutationEffects(root, finishedWork);
 
     {
       // Mark the current commit time to be shared by all Profilers in this
@@ -26037,6 +26330,12 @@ function commitRootImpl(root, recoverableErrors, transitions, renderPriorityLeve
 
     commitMutationEffects(root, finishedWork, lanes);
 
+    {
+      if (shouldFireAfterActiveInstanceBlur) {
+        afterActiveInstanceBlur();
+      }
+    }
+
     resetAfterCommit(); // The work-in-progress tree is now the current tree. This must come after
     // the mutation phase, so that the previous tree is still current during
     // componentWillUnmount, but before the layout phase, so that the finished
@@ -26044,15 +26343,7 @@ function commitRootImpl(root, recoverableErrors, transitions, renderPriorityLeve
 
     root.current = finishedWork; // The next phase is the layout phase, where we call effects that read
 
-    {
-      markLayoutEffectsStarted(lanes);
-    }
-
     commitLayoutEffects(finishedWork, root, lanes);
-
-    {
-      markLayoutEffectsStopped();
-    }
     // opportunity to paint.
 
 
@@ -26190,10 +26481,6 @@ function commitRootImpl(root, recoverableErrors, transitions, renderPriorityLeve
 
   flushSyncWorkOnAllRoots();
 
-  {
-    markCommitStopped();
-  }
-
   return null;
 }
 
@@ -26309,10 +26596,6 @@ function flushPassiveEffectsImpl() {
     didScheduleUpdateDuringPassiveEffects = false;
   }
 
-  {
-    markPassiveEffectsStarted(lanes);
-  }
-
   var prevExecutionContext = executionContext;
   executionContext |= CommitContext;
   commitPassiveUnmountEffects(root.current);
@@ -26326,10 +26609,6 @@ function flushPassiveEffectsImpl() {
       var fiber = profilerEffects[i];
       commitPassiveEffectDurations(root, fiber);
     }
-  }
-
-  {
-    markPassiveEffectsStopped();
   }
 
   {
@@ -27657,6 +27936,10 @@ key, pendingProps, source, owner, mode, lanes) {
         if ((mode & ConcurrentMode) !== NoMode) {
           // Strict effects should never run on legacy roots
           mode |= StrictEffectsMode;
+
+          if (pendingProps.DO_NOT_USE_disableStrictPassiveEffect) {
+            mode |= NoStrictPassiveEffectsMode;
+          }
         }
 
         break;
@@ -27674,10 +27957,16 @@ key, pendingProps, source, owner, mode, lanes) {
         return createFiberFromOffscreen(pendingProps, mode, lanes, key);
 
       case REACT_LEGACY_HIDDEN_TYPE:
+        {
+          return createFiberFromLegacyHidden(pendingProps, mode, lanes, key);
+        }
 
       // Fall through
 
       case REACT_SCOPE_TYPE:
+        {
+          return createFiberFromScope(type, pendingProps, mode, lanes, key);
+        }
 
       // Fall through
 
@@ -27787,6 +28076,14 @@ function createFiberFromFragment(elements, mode, lanes, key) {
   return fiber;
 }
 
+function createFiberFromScope(scope, pendingProps, mode, lanes, key) {
+  var fiber = createFiber(ScopeComponent, pendingProps, key, mode);
+  fiber.type = scope;
+  fiber.elementType = scope;
+  fiber.lanes = lanes;
+  return fiber;
+}
+
 function createFiberFromProfiler(pendingProps, mode, lanes, key) {
   {
     if (typeof pendingProps.id !== 'string') {
@@ -27839,6 +28136,29 @@ function createFiberFromOffscreen(pendingProps, mode, lanes, key) {
     }
   };
   fiber.stateNode = primaryChildInstance;
+  return fiber;
+}
+function createFiberFromLegacyHidden(pendingProps, mode, lanes, key) {
+  var fiber = createFiber(LegacyHiddenComponent, pendingProps, key, mode);
+  fiber.elementType = REACT_LEGACY_HIDDEN_TYPE;
+  fiber.lanes = lanes; // Adding a stateNode for legacy hidden because it's currently using
+  // the offscreen implementation, which depends on a state node
+
+  var instance = {
+    _visibility: OffscreenVisible,
+    _pendingVisibility: OffscreenVisible,
+    _pendingMarkers: null,
+    _transitions: null,
+    _retryCache: null,
+    _current: null,
+    detach: function () {
+      return detachOffscreenInstance(instance);
+    },
+    attach: function () {
+      return attachOffscreenInstance(instance);
+    }
+  };
+  fiber.stateNode = instance;
   return fiber;
 }
 function createFiberFromCache(pendingProps, mode, lanes, key) {
@@ -28027,7 +28347,7 @@ identifierPrefix, onRecoverableError, transitionCallbacks, formState) {
   return root;
 }
 
-var ReactVersion = '18.3.0-canary-0e352ea01-20231109';
+var ReactVersion = '18.3.0-experimental-aec521a96-20231114';
 
 function createPortal$1(children, containerInfo, // TODO: figure out the API for cross-renderer implementation.
 implementation) {
@@ -28158,10 +28478,6 @@ function updateContainer(element, container, parentComponent, callback) {
 
   var current$1 = container.current;
   var lane = requestUpdateLane(current$1);
-
-  {
-    markRenderScheduled(lane);
-  }
 
   var context = getContextForSubtree(parentComponent);
 
@@ -29486,7 +29802,7 @@ function accumulateOrCreateContinuousQueuedReplayableEvent(existingQueuedEvent, 
     var queuedEvent = createQueuedReplayableEvent(blockedOn, domEventName, eventSystemFlags, targetContainer, nativeEvent);
 
     if (blockedOn !== null) {
-      var fiber = getInstanceFromNode(blockedOn);
+      var fiber = getInstanceFromNode$1(blockedOn);
 
       if (fiber !== null) {
         // Attempt to increase the priority of this target.
@@ -29641,7 +29957,7 @@ function attemptReplayContinuousQueuedEvent(queuedEvent) {
       resetReplayingEvent();
     } else {
       // We're still blocked. Try again later.
-      var fiber = getInstanceFromNode(nextBlockedOn);
+      var fiber = getInstanceFromNode$1(nextBlockedOn);
 
       if (fiber !== null) {
         attemptContinuousHydration(fiber);
@@ -29725,7 +30041,7 @@ function replayUnblockedFormActions(formReplayingQueue) {
       }
     }
 
-    var formInst = getInstanceFromNode(form);
+    var formInst = getInstanceFromNode$1(form);
 
     if (formInst !== null) {
       // This is part of our instance.
@@ -29959,7 +30275,7 @@ function dispatchEvent(domEventName, eventSystemFlags, targetContainer, nativeEv
 
   if (eventSystemFlags & IS_CAPTURE_PHASE && isDiscreteEventThatRequiresHydration(domEventName)) {
     while (blockedOn !== null) {
-      var fiber = getInstanceFromNode(blockedOn);
+      var fiber = getInstanceFromNode$1(blockedOn);
 
       if (fiber !== null) {
         attemptSynchronousHydration(fiber);
@@ -30182,6 +30498,9 @@ function addEventBubbleListenerWithPassiveFlag(target, eventType, listener, pass
     passive: passive
   });
   return listener;
+}
+function removeEventListener(target, eventType, listener, capture) {
+  target.removeEventListener(eventType, listener, capture);
 }
 
 /**
@@ -30899,7 +31218,9 @@ function extractEvents$4(dispatchQueue, domEventName, targetInst, nativeEvent, n
     }
   } else if (shouldUseClickEvent(targetNode)) {
     getTargetInstFunc = getTargetInstForClickEvent;
-  } else ;
+  } else if (targetInst && isCustomElement(targetInst.elementType)) {
+    getTargetInstFunc = getTargetInstForChangeEvent;
+  }
 
   if (getTargetInstFunc) {
     var inst = getTargetInstFunc(domEventName, targetInst);
@@ -31703,6 +32024,13 @@ var topLevelEventsToReactNames = new Map(); // NOTE: Capitalization is important
 
 var simpleEventPluginEvents = ['abort', 'auxClick', 'cancel', 'canPlay', 'canPlayThrough', 'click', 'close', 'contextMenu', 'copy', 'cut', 'drag', 'dragEnd', 'dragEnter', 'dragExit', 'dragLeave', 'dragOver', 'dragStart', 'drop', 'durationChange', 'emptied', 'encrypted', 'ended', 'error', 'gotPointerCapture', 'input', 'invalid', 'keyDown', 'keyPress', 'keyUp', 'load', 'loadedData', 'loadedMetadata', 'loadStart', 'lostPointerCapture', 'mouseDown', 'mouseMove', 'mouseOut', 'mouseOver', 'mouseUp', 'paste', 'pause', 'play', 'playing', 'pointerCancel', 'pointerDown', 'pointerMove', 'pointerOut', 'pointerOver', 'pointerUp', 'progress', 'rateChange', 'reset', 'resize', 'seeked', 'seeking', 'stalled', 'submit', 'suspend', 'timeUpdate', 'touchCancel', 'touchEnd', 'touchStart', 'volumeChange', 'scroll', 'scrollEnd', 'toggle', 'touchMove', 'waiting', 'wheel'];
 
+{
+  // Special case: these two events don't have on* React handler
+  // and are only accessible via the createEventHandle API.
+  topLevelEventsToReactNames.set('beforeblur', null);
+  topLevelEventsToReactNames.set('afterblur', null);
+}
+
 function registerSimpleEvent(domEventName, reactName) {
   topLevelEventsToReactNames.set(domEventName, reactName);
   registerTwoPhaseEvent(reactName, [domEventName]);
@@ -31851,7 +32179,20 @@ function extractEvents$1(dispatchQueue, domEventName, targetInst, nativeEvent, n
 
   var inCapturePhase = (eventSystemFlags & IS_CAPTURE_PHASE) !== 0;
 
-  {
+  if (eventSystemFlags & IS_EVENT_HANDLE_NON_MANAGED_NODE) {
+    var listeners = accumulateEventHandleNonManagedNodeListeners( // TODO: this cast may not make sense for events like
+    // "focus" where React listens to e.g. "focusin".
+    reactEventType, targetContainer, inCapturePhase);
+
+    if (listeners.length > 0) {
+      // Intentionally create event lazily.
+      var event = new SyntheticEventCtor(reactName, reactEventType, null, nativeEvent, nativeEventTarget);
+      dispatchQueue.push({
+        event: event,
+        listeners: listeners
+      });
+    }
+  } else {
     // Some events don't bubble in the browser.
     // In the past, React has always bubbled them, but this can be surprising.
     // We're going to try aligning closer to the browser behavior by not bubbling
@@ -31862,7 +32203,7 @@ function extractEvents$1(dispatchQueue, domEventName, targetInst, nativeEvent, n
     // This is a breaking change that can wait until React 18.
     domEventName === 'scroll' || domEventName === 'scrollend');
 
-    var _listeners = accumulateSinglePhaseListeners(targetInst, reactName, nativeEvent.type, inCapturePhase, accumulateTargetOnly);
+    var _listeners = accumulateSinglePhaseListeners(targetInst, reactName, nativeEvent.type, inCapturePhase, accumulateTargetOnly, nativeEvent);
 
     if (_listeners.length > 0) {
       // Intentionally create event lazily.
@@ -31889,7 +32230,7 @@ function extractEvents(dispatchQueue, domEventName, targetInst, nativeEvent, nat
   // should probably be inlined somewhere and have its logic
   // be core the to event system. This would potentially allow
   // us to ship builds of React without the polyfilled plugins below.
-  extractEvents$1(dispatchQueue, domEventName, targetInst, nativeEvent, nativeEventTarget, eventSystemFlags);
+  extractEvents$1(dispatchQueue, domEventName, targetInst, nativeEvent, nativeEventTarget, eventSystemFlags, targetContainer);
   var shouldProcessPolyfillPlugins = (eventSystemFlags & SHOULD_NOT_PROCESS_POLYFILL_EVENT_PLUGINS) === 0; // We don't process these events unless we are in the
   // event's native "bubble" phase, which means that we're
   // not in the capture phase. That's because we emulate
@@ -31985,7 +32326,7 @@ function processDispatchQueue(dispatchQueue, eventSystemFlags) {
 function dispatchEventsForPlugins(domEventName, eventSystemFlags, nativeEvent, targetInst, targetContainer) {
   var nativeEventTarget = getEventTarget(nativeEvent);
   var dispatchQueue = [];
-  extractEvents(dispatchQueue, domEventName, targetInst, nativeEvent, nativeEventTarget, eventSystemFlags);
+  extractEvents(dispatchQueue, domEventName, targetInst, nativeEvent, nativeEventTarget, eventSystemFlags, targetContainer);
   processDispatchQueue(dispatchQueue, eventSystemFlags);
 }
 
@@ -32020,6 +32361,22 @@ function listenToNativeEvent(domEventName, isCapturePhaseListener, target) {
 
   addTrappedEventListener(target, domEventName, eventSystemFlags, isCapturePhaseListener);
 } // This is only used by createEventHandle when the
+// target is not a DOM element. E.g. window.
+
+function listenToNativeEventForNonManagedEventTarget(domEventName, isCapturePhaseListener, target) {
+  var eventSystemFlags = IS_EVENT_HANDLE_NON_MANAGED_NODE;
+  var listenerSet = getEventListenerSet(target);
+  var listenerSetKey = getListenerSetKey(domEventName, isCapturePhaseListener);
+
+  if (!listenerSet.has(listenerSetKey)) {
+    if (isCapturePhaseListener) {
+      eventSystemFlags |= IS_CAPTURE_PHASE;
+    }
+
+    addTrappedEventListener(target, domEventName, eventSystemFlags, isCapturePhaseListener);
+    listenerSet.add(listenerSetKey);
+  }
+}
 var listeningMarker = '_reactListening' + Math.random().toString(36).slice(2);
 function listenToAllSupportedEvents(rootContainerElement) {
   if (!rootContainerElement[listeningMarker]) {
@@ -32066,22 +32423,55 @@ function addTrappedEventListener(targetContainer, domEventName, eventSystemFlags
     }
   }
 
-  targetContainer = targetContainer;
+  targetContainer = isDeferredListenerForLegacyFBSupport ? targetContainer.ownerDocument : targetContainer;
+  var unsubscribeListener; // When legacyFBSupport is enabled, it's for when we
+  // want to add a one time event listener to a container.
+  // This should only be used with enableLegacyFBSupport
+  // due to requirement to provide compatibility with
+  // internal FB www event tooling. This works by removing
+  // the event listener as soon as it is invoked. We could
+  // also attempt to use the {once: true} param on
+  // addEventListener, but that requires support and some
+  // browsers do not support this today, and given this is
+  // to support legacy code patterns, it's likely they'll
+  // need support for such browsers.
+
+  if (isDeferredListenerForLegacyFBSupport) {
+    var originalListener = listener; // $FlowFixMe[missing-this-annot]
+
+    listener = function () {
+      removeEventListener(targetContainer, domEventName, unsubscribeListener, isCapturePhaseListener);
+
+      for (var _len = arguments.length, p = new Array(_len), _key = 0; _key < _len; _key++) {
+        p[_key] = arguments[_key];
+      }
+
+      return originalListener.apply(this, p);
+    };
+  } // TODO: There are too many combinations here. Consolidate them.
 
 
   if (isCapturePhaseListener) {
     if (isPassiveListener !== undefined) {
-      addEventCaptureListenerWithPassiveFlag(targetContainer, domEventName, listener, isPassiveListener);
+      unsubscribeListener = addEventCaptureListenerWithPassiveFlag(targetContainer, domEventName, listener, isPassiveListener);
     } else {
-      addEventCaptureListener(targetContainer, domEventName, listener);
+      unsubscribeListener = addEventCaptureListener(targetContainer, domEventName, listener);
     }
   } else {
     if (isPassiveListener !== undefined) {
-      addEventBubbleListenerWithPassiveFlag(targetContainer, domEventName, listener, isPassiveListener);
+      unsubscribeListener = addEventBubbleListenerWithPassiveFlag(targetContainer, domEventName, listener, isPassiveListener);
     } else {
-      addEventBubbleListener(targetContainer, domEventName, listener);
+      unsubscribeListener = addEventBubbleListener(targetContainer, domEventName, listener);
     }
   }
+}
+
+function deferClickToDocumentForLegacyFBSupport(domEventName, targetContainer) {
+  // We defer all click events with legacy FB support mode on.
+  // This means we add a one time event listener to trigger
+  // after the FB delegated listeners fire.
+  var isDeferredListenerForLegacyFBSupport = true;
+  addTrappedEventListener(targetContainer, domEventName, IS_LEGACY_FB_SUPPORT_MODE, false, isDeferredListenerForLegacyFBSupport);
 }
 
 function isMatchingRootContainer(grandContainer, targetContainer) {
@@ -32093,6 +32483,18 @@ function dispatchEventForPluginEventSystem(domEventName, eventSystemFlags, nativ
 
   if ((eventSystemFlags & IS_EVENT_HANDLE_NON_MANAGED_NODE) === 0 && (eventSystemFlags & IS_NON_DELEGATED) === 0) {
     var targetContainerNode = targetContainer; // If we are using the legacy FB support flag, we
+    // defer the event to the null with a one
+    // time event listener so we can defer the event.
+
+    if (// If our event flags match the required flags for entering
+    // FB legacy mode and we are processing the "click" event,
+    // then we can defer the event to the "document", to allow
+    // for legacy FB support, where the expected behavior was to
+    // match React < 16 behavior of delegated clicks to the doc.
+    domEventName === 'click' && (eventSystemFlags & SHOULD_NOT_DEFER_CLICK_FOR_FB_SUPPORT_MODE) === 0 && !isReplayingEvent(nativeEvent)) {
+      deferClickToDocumentForLegacyFBSupport(domEventName, targetContainer);
+      return;
+    }
 
     if (targetInst !== null) {
       // The below logic attempts to work out if we need to change
@@ -32176,7 +32578,7 @@ function dispatchEventForPluginEventSystem(domEventName, eventSystemFlags, nativ
   }
 
   batchedUpdates(function () {
-    return dispatchEventsForPlugins(domEventName, eventSystemFlags, nativeEvent, ancestorInst);
+    return dispatchEventsForPlugins(domEventName, eventSystemFlags, nativeEvent, ancestorInst, targetContainer);
   });
 }
 
@@ -32203,6 +32605,18 @@ function accumulateSinglePhaseListeners(targetFiber, reactName, nativeEventType,
     if ((tag === HostComponent || (tag === HostHoistable ) || (tag === HostSingleton )) && stateNode !== null) {
       lastHostComponent = stateNode; // createEventHandle listeners
 
+      {
+        var eventHandlerListeners = getEventHandlerListeners(lastHostComponent);
+
+        if (eventHandlerListeners !== null) {
+          eventHandlerListeners.forEach(function (entry) {
+            if (entry.type === nativeEventType && entry.capture === inCapturePhase) {
+              listeners.push(createDispatchListener(instance, entry.callback, lastHostComponent));
+            }
+          });
+        }
+      } // Standard React on* listeners, i.e. onClick or onClickCapture
+
 
       if (reactEventName !== null) {
         var listener = getListener(instance, reactEventName);
@@ -32210,6 +32624,19 @@ function accumulateSinglePhaseListeners(targetFiber, reactName, nativeEventType,
         if (listener != null) {
           listeners.push(createDispatchListener(instance, listener, lastHostComponent));
         }
+      }
+    } else if (tag === ScopeComponent && lastHostComponent !== null && stateNode !== null) {
+      // Scopes
+      var reactScopeInstance = stateNode;
+
+      var _eventHandlerListeners = getEventHandlerListeners(reactScopeInstance);
+
+      if (_eventHandlerListeners !== null) {
+        _eventHandlerListeners.forEach(function (entry) {
+          if (entry.type === nativeEventType && entry.capture === inCapturePhase) {
+            listeners.push(createDispatchListener(instance, entry.callback, lastHostComponent));
+          }
+        });
       }
     } // If we are only accumulating events for the target, then we don't
     // continue to propagate through the React fiber tree to find other
@@ -32219,6 +32646,21 @@ function accumulateSinglePhaseListeners(targetFiber, reactName, nativeEventType,
     if (accumulateTargetOnly) {
       break;
     } // If we are processing the onBeforeBlur event, then we need to take
+    // into consideration that part of the React tree might have been hidden
+    // or deleted (as we're invoking this event during commit). We can find
+    // this out by checking if intercept fiber set on the event matches the
+    // current instance fiber. In which case, we should clear all existing
+    // listeners.
+
+
+    if (nativeEvent.type === 'beforeblur') {
+      // $FlowFixMe[prop-missing] internal field
+      var detachedInterceptFiber = nativeEvent._detachedInterceptFiber;
+
+      if (detachedInterceptFiber !== null && (detachedInterceptFiber === instance || detachedInterceptFiber === instance.alternate)) {
+        listeners = [];
+      }
+    }
 
     instance = instance.return;
   }
@@ -32395,6 +32837,20 @@ function accumulateEnterLeaveTwoPhaseListeners(dispatchQueue, leaveEvent, enterE
     accumulateEnterLeaveListenersForEvent(dispatchQueue, enterEvent, to, common, true);
   }
 }
+function accumulateEventHandleNonManagedNodeListeners(reactEventType, currentTarget, inCapturePhase) {
+  var listeners = [];
+  var eventListeners = getEventHandlerListeners(currentTarget);
+
+  if (eventListeners !== null) {
+    eventListeners.forEach(function (entry) {
+      if (entry.type === reactEventType && entry.capture === inCapturePhase) {
+        listeners.push(createDispatchListener(null, entry.callback, currentTarget));
+      }
+    });
+  }
+
+  return listeners;
+}
 function getListenerSetKey(domEventName, capture) {
   return domEventName + "__" + (capture ? 'capture' : 'bubble');
 }
@@ -32417,7 +32873,7 @@ var canDiffStyleForHydrationWarning;
   // normalized. Since it only affects IE, we're skipping style warnings
   // in that browser completely in favor of doing all that work.
   // See https://github.com/facebook/react/issues/11807
-  canDiffStyleForHydrationWarning = canUseDOM && !document.documentMode;
+  canDiffStyleForHydrationWarning = disableIEWorkarounds ;
 }
 
 function validatePropertiesInDevelopment(type, props) {
@@ -32685,6 +33141,20 @@ function setProp(domElement, tag, key, value, props, prevValue) {
     case 'src':
     case 'href':
       {
+        {
+          if (value === '') {
+            {
+              if (key === 'src') {
+                error('An empty string ("") was passed to the %s attribute. ' + 'This may cause the browser to download the whole page again over the network. ' + 'To fix this, either do not render the element at all ' + 'or pass null to %s instead of an empty string.', key, key);
+              } else {
+                error('An empty string ("") was passed to the %s attribute. ' + 'To fix this, either do not render the element at all ' + 'or pass null to %s instead of an empty string.', key, key);
+              }
+            }
+
+            domElement.removeAttribute(key);
+            break;
+          }
+        }
 
         if (value == null || typeof value === 'function' || typeof value === 'symbol' || typeof value === 'boolean') {
           domElement.removeAttribute(key);
@@ -32817,7 +33287,7 @@ function setProp(domElement, tag, key, value, props, prevValue) {
             }
 
             {
-              setInnerHTML$1(domElement, nextHtml);
+              domElement.innerHTML = nextHtml;
             }
           }
         }
@@ -33053,6 +33523,9 @@ function setProp(domElement, tag, key, value, props, prevValue) {
 
     case 'innerText':
     case 'textContent':
+      {
+        break;
+      }
 
     // Fall through
 
@@ -33093,7 +33566,7 @@ function setPropOnCustomElement(domElement, tag, key, value, props, prevValue) {
             }
 
             {
-              setInnerHTML$1(domElement, nextHtml);
+              domElement.innerHTML = nextHtml;
             }
           }
         }
@@ -33163,6 +33636,9 @@ function setPropOnCustomElement(domElement, tag, key, value, props, prevValue) {
     case 'innerText': // Properties
 
     case 'textContent':
+      {
+        break;
+      }
 
     // Fall through
 
@@ -33174,12 +33650,7 @@ function setPropOnCustomElement(domElement, tag, key, value, props, prevValue) {
           }
         } else {
           {
-            if (typeof value === 'boolean') {
-              // Special case before the new flag is on
-              value = '' + value;
-            }
-
-            setValueForAttribute(domElement, key, value);
+            setValueForPropertyOnCustomComponent(domElement, key, value);
           }
         }
       }
@@ -34404,10 +34875,26 @@ function diffHydratedCustomComponent(domElement, tag, props, hostContext, extraA
       case 'isContentEditable':
       case 'outerText':
       case 'outerHTML':
+        {
+          extraAttributes.delete(propKey.toLowerCase());
+
+          {
+            error('Assignment to read-only property will result in a no-op: `%s`', propKey);
+          }
+
+          continue;
+        }
 
       // Fall through
 
       case 'className':
+        {
+          // className is a special cased property on the server to render as an attribute.
+          extraAttributes.delete('class');
+          var serverValue = getValueForAttributeOnCustomComponent(domElement, 'class', value);
+          warnForPropDifference('className', serverValue, value);
+          continue;
+        }
 
       // Fall through
 
@@ -34529,6 +35016,20 @@ function diffHydratedGenericElement(domElement, tag, props, hostContext, extraAt
 
       case 'src':
       case 'href':
+        {
+          if (value === '') {
+            {
+              if (propKey === 'src') {
+                error('An empty string ("") was passed to the %s attribute. ' + 'This may cause the browser to download the whole page again over the network. ' + 'To fix this, either do not render the element at all ' + 'or pass null to %s instead of an empty string.', propKey, propKey);
+              } else {
+                error('An empty string ("") was passed to the %s attribute. ' + 'To fix this, either do not render the element at all ' + 'or pass null to %s instead of an empty string.', propKey, propKey);
+              }
+            }
+
+            hydrateSanitizedAttribute(domElement, propKey, propKey, null, extraAttributes);
+            continue;
+          }
+        }
 
         hydrateSanitizedAttribute(domElement, propKey, propKey, value, extraAttributes);
         continue;
@@ -35166,8 +35667,30 @@ function prepareForCommit(containerInfo) {
   selectionInformation = getSelectionInformation();
   var activeInstance = null;
 
+  {
+    var focusedElem = selectionInformation.focusedElem;
+
+    if (focusedElem !== null) {
+      activeInstance = getClosestInstanceFromNode(focusedElem);
+    }
+  }
+
   setEnabled(false);
   return activeInstance;
+}
+function beforeActiveInstanceBlur(internalInstanceHandle) {
+  {
+    setEnabled(true);
+    dispatchBeforeDetachedBlur(selectionInformation.focusedElem, internalInstanceHandle);
+    setEnabled(false);
+  }
+}
+function afterActiveInstanceBlur() {
+  {
+    setEnabled(true);
+    dispatchAfterDetachedBlur(selectionInformation.focusedElem);
+    setEnabled(false);
+  }
 }
 function resetAfterCommit(containerInfo) {
   restoreSelection(selectionInformation);
@@ -35387,9 +35910,22 @@ var scheduleTimeout = typeof setTimeout === 'function' ? setTimeout : undefined;
 var cancelTimeout = typeof clearTimeout === 'function' ? clearTimeout : undefined;
 var noTimeout = -1;
 var localPromise = typeof Promise === 'function' ? Promise : undefined;
+function getInstanceFromNode(node) {
+  return getClosestInstanceFromNode(node) || null;
+}
 function preparePortalMount(portalInstance) {
   listenToAllSupportedEvents(portalInstance);
 }
+function prepareScopeUpdate(scopeInstance, internalInstanceHandle) {
+  {
+    precacheFiberNode(internalInstanceHandle, scopeInstance);
+  }
+}
+function getInstanceFromScope(scopeInstance) {
+  {
+    return getFiberFromScopeInstance(scopeInstance);
+  }
+} // -------------------
 var scheduleMicrotask = typeof queueMicrotask === 'function' ? queueMicrotask : typeof localPromise !== 'undefined' ? function (callback) {
   return localPromise.resolve(null).then(callback).catch(handleErrorInNextTick);
 } : scheduleTimeout; // TODO: Determine the best fallback here.
@@ -35477,6 +36013,35 @@ function insertInContainerBefore(container, child, beforeChild) {
     container.parentNode.insertBefore(child, beforeChild);
   } else {
     container.insertBefore(child, beforeChild);
+  }
+}
+
+function createEvent(type, bubbles) {
+  var event = document.createEvent('Event');
+  event.initEvent(type, bubbles, false);
+  return event;
+}
+
+function dispatchBeforeDetachedBlur(target, internalInstanceHandle) {
+  {
+    var event = createEvent('beforeblur', true); // Dispatch "beforeblur" directly on the target,
+    // so it gets picked up by the event system and
+    // can propagate through the React internal tree.
+    // $FlowFixMe[prop-missing]: internal field
+
+    event._detachedInterceptFiber = internalInstanceHandle;
+    target.dispatchEvent(event);
+  }
+}
+
+function dispatchAfterDetachedBlur(target) {
+  {
+    var event = createEvent('afterblur', false); // So we know what was detached, make the relatedTarget the
+    // detached target on the "afterblur" event.
+
+    event.relatedTarget = target; // Dispatch the event on the document.
+
+    document.dispatchEvent(event);
   }
 }
 
@@ -36140,7 +36705,7 @@ function resolveSingletonInstance(type, props, rootContainerInstance, hostContex
 }
 function acquireSingletonInstance(type, props, instance, internalInstanceHandle) {
   {
-    var currentInstanceHandle = getInstanceFromNode(instance);
+    var currentInstanceHandle = getInstanceFromNode$1(instance);
 
     if (currentInstanceHandle) {
       var tagName = instance.tagName.toLowerCase();
@@ -37757,7 +38322,7 @@ var topLevelUpdateWarnings;
 
     var isRootRenderedBySomeReact = !!container._reactRootContainer;
     var rootEl = getReactRootElementInContainer(container);
-    var hasNonRootReactChild = !!(rootEl && getInstanceFromNode(rootEl));
+    var hasNonRootReactChild = !!(rootEl && getInstanceFromNode$1(rootEl));
 
     if (hasNonRootReactChild && !isRootRenderedBySomeReact) {
       error('render(...): Replacing React-rendered children with a new root ' + 'component. If you intended to update the children of this node, ' + 'you should instead have the existing children update their state ' + 'and render the new components instead of calling ReactDOM.render.');
@@ -37978,7 +38543,7 @@ function unmountComponentAtNode(container) {
   if (container._reactRootContainer) {
     {
       var rootEl = getReactRootElementInContainer(container);
-      var renderedByDifferentReact = rootEl && !getInstanceFromNode(rootEl);
+      var renderedByDifferentReact = rootEl && !getInstanceFromNode$1(rootEl);
 
       if (renderedByDifferentReact) {
         error("unmountComponentAtNode(): The node you're attempting to unmount " + 'was rendered by another copy of React.');
@@ -38000,7 +38565,7 @@ function unmountComponentAtNode(container) {
     {
       var _rootEl = getReactRootElementInContainer(container);
 
-      var hasNonRootReactChild = !!(_rootEl && getInstanceFromNode(_rootEl)); // Check if the container itself is a React root node.
+      var hasNonRootReactChild = !!(_rootEl && getInstanceFromNode$1(_rootEl)); // Check if the container itself is a React root node.
 
       var isContainerReactRoot = container.nodeType === ELEMENT_NODE && isValidContainerLegacy(container.parentNode) && // $FlowFixMe[prop-missing]
       // $FlowFixMe[incompatible-use]
@@ -38012,6 +38577,87 @@ function unmountComponentAtNode(container) {
     }
 
     return false;
+  }
+}
+
+function isValidEventTarget(target) {
+  return typeof target.addEventListener === 'function';
+}
+
+function isReactScope(target) {
+  return typeof target.getChildContextValues === 'function';
+}
+
+function createEventHandleListener(type, isCapturePhaseListener, callback) {
+  return {
+    callback: callback,
+    capture: isCapturePhaseListener,
+    type: type
+  };
+}
+
+function registerReactDOMEvent(target, domEventName, isCapturePhaseListener) {
+  if (target.nodeType === ELEMENT_NODE) ; else if (isReactScope(target)) ; else if (isValidEventTarget(target)) {
+    var eventTarget = target; // These are valid event targets, but they are also
+    // non-managed React nodes.
+
+    listenToNativeEventForNonManagedEventTarget(domEventName, isCapturePhaseListener, eventTarget);
+  } else {
+    throw new Error('ReactDOM.createEventHandle: setter called on an invalid ' + 'target. Provide a valid EventTarget or an element managed by React.');
+  }
+}
+
+function createEventHandle(type, options) {
+  {
+    var domEventName = type; // We cannot support arbitrary native events with eager root listeners
+    // because the eager strategy relies on knowing the whole list ahead of time.
+    // If we wanted to support this, we'd have to add code to keep track
+    // (or search) for all portal and root containers, and lazily add listeners
+    // to them whenever we see a previously unknown event. This seems like a lot
+    // of complexity for something we don't even have a particular use case for.
+    // Unfortunately, the downside of this invariant is that *removing* a native
+    // event from the list of known events has now become a breaking change for
+    // any code relying on the createEventHandle API.
+
+    if (!allNativeEvents.has(domEventName)) {
+      throw new Error("Cannot call unstable_createEventHandle with \"" + domEventName + "\", as it is not an event known to React.");
+    }
+
+    var isCapturePhaseListener = false;
+
+    if (options != null) {
+      var optionsCapture = options.capture;
+
+      if (typeof optionsCapture === 'boolean') {
+        isCapturePhaseListener = optionsCapture;
+      }
+    }
+
+    var eventHandle = function (target, callback) {
+      if (typeof callback !== 'function') {
+        throw new Error('ReactDOM.createEventHandle: setter called with an invalid ' + 'callback. The callback must be a function.');
+      }
+
+      if (!doesTargetHaveEventHandle(target, eventHandle)) {
+        addEventHandleToTarget(target, eventHandle);
+        registerReactDOMEvent(target, domEventName, isCapturePhaseListener);
+      }
+
+      var listener = createEventHandleListener(domEventName, isCapturePhaseListener, callback);
+      var targetListeners = getEventHandlerListeners(target);
+
+      if (targetListeners === null) {
+        targetListeners = new Set();
+        setEventHandlerListeners(target, targetListeners);
+      }
+
+      targetListeners.add(listener);
+      return function () {
+        targetListeners.delete(listener);
+      };
+    };
+
+    return eventHandle;
   }
 }
 
@@ -38319,7 +38965,7 @@ function flushSync(fn) {
 }
 // This is an array for better minification.
 
-Internals.Events = [getInstanceFromNode, getNodeFromInstance, getFiberCurrentPropsFromNode, enqueueStateRestore, restoreStateIfNeeded, batchedUpdates$1];
+Internals.Events = [getInstanceFromNode$1, getNodeFromInstance, getFiberCurrentPropsFromNode, enqueueStateRestore, restoreStateIfNeeded, batchedUpdates$1];
 var foundDevTools = injectIntoDevTools({
   findFiberByHostInstance: getClosestInstanceFromNode,
   bundleType: 1 ,
@@ -38341,9 +38987,26 @@ var foundDevTools = injectIntoDevTools({
   }
 }
 
+function experimental_useFormStatus() {
+  {
+    error('useFormStatus is now in canary. Remove the experimental_ prefix. ' + 'The prefixed alias will be removed in an upcoming release.');
+  }
+
+  return useFormStatus();
+}
+function experimental_useFormState(action, initialState, permalink) {
+  {
+    error('useFormState is now in canary. Remove the experimental_ prefix. ' + 'The prefixed alias will be removed in an upcoming release.');
+  }
+
+  return useFormState(action, initialState, permalink);
+}
+
 exports.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = Internals;
 exports.createPortal = createPortal;
 exports.createRoot = createRoot;
+exports.experimental_useFormState = experimental_useFormState;
+exports.experimental_useFormStatus = experimental_useFormStatus;
 exports.findDOMNode = findDOMNode;
 exports.flushSync = flushSync;
 exports.hydrate = hydrate;
@@ -38357,7 +39020,9 @@ exports.preloadModule = preloadModule;
 exports.render = render;
 exports.unmountComponentAtNode = unmountComponentAtNode;
 exports.unstable_batchedUpdates = batchedUpdates$1;
+exports.unstable_createEventHandle = createEventHandle;
 exports.unstable_renderSubtreeIntoContainer = renderSubtreeIntoContainer;
+exports.unstable_runWithPriority = runWithPriority;
 exports.useFormState = useFormState;
 exports.useFormStatus = useFormStatus;
 exports.version = ReactVersion;

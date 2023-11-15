@@ -10,7 +10,7 @@
 
 'use strict';
 
-var ReactVersion = '18.3.0-canary-0e352ea01-20231109';
+var ReactVersion = '18.3.0-experimental-aec521a96-20231114';
 
 // ATTENTION
 // When adding new symbols to this file,
@@ -23,10 +23,20 @@ const REACT_STRICT_MODE_TYPE = Symbol.for('react.strict_mode');
 const REACT_PROFILER_TYPE = Symbol.for('react.profiler');
 const REACT_PROVIDER_TYPE = Symbol.for('react.provider');
 const REACT_CONTEXT_TYPE = Symbol.for('react.context');
+const REACT_SERVER_CONTEXT_TYPE = Symbol.for('react.server_context');
 const REACT_FORWARD_REF_TYPE = Symbol.for('react.forward_ref');
 const REACT_SUSPENSE_TYPE = Symbol.for('react.suspense');
+const REACT_SUSPENSE_LIST_TYPE = Symbol.for('react.suspense_list');
 const REACT_MEMO_TYPE = Symbol.for('react.memo');
 const REACT_LAZY_TYPE = Symbol.for('react.lazy');
+const REACT_SCOPE_TYPE = Symbol.for('react.scope');
+const REACT_DEBUG_TRACING_MODE_TYPE = Symbol.for('react.debug_trace_mode');
+const REACT_OFFSCREEN_TYPE = Symbol.for('react.offscreen');
+const REACT_LEGACY_HIDDEN_TYPE = Symbol.for('react.legacy_hidden');
+const REACT_CACHE_TYPE = Symbol.for('react.cache');
+const REACT_TRACING_MARKER_TYPE = Symbol.for('react.tracing_marker');
+const REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED = Symbol.for('react.default_value');
+const REACT_POSTPONE_TYPE = Symbol.for('react.postpone');
 const MAYBE_ITERATOR_SYMBOL = Symbol.iterator;
 const FAUX_ITERATOR_SYMBOL = '@@iterator';
 function getIteratorFn(maybeIterable) {
@@ -616,6 +626,7 @@ function mapIntoArray(children, array, escapedPrefix, nameSoFar, callback) {
 
 function mapChildren(children, func, context) {
   if (children == null) {
+    // $FlowFixMe limitation refining abstract types in Flow
     return children;
   }
 
@@ -929,6 +940,13 @@ function cache(fn) {
   };
 }
 
+function postpone(reason) {
+  // eslint-disable-next-line react-internal/prod-error-codes
+  const postponeInstance = new Error(reason);
+  postponeInstance.$$typeof = REACT_POSTPONE_TYPE;
+  throw postponeInstance;
+}
+
 /**
  * Keeps track of the current dispatcher.
  */
@@ -943,6 +961,35 @@ function resolveDispatcher() {
 
 
   return dispatcher;
+}
+
+function getCacheSignal() {
+  const dispatcher = ReactCurrentCache.current;
+
+  if (!dispatcher) {
+    // If we have no cache to associate with this call, then we don't know
+    // its lifetime. We abort early since that's safer than letting it live
+    // for ever. Unlike just caching which can be a functional noop outside
+    // of React, these should generally always be associated with some React
+    // render but we're not limiting quite as much as making it a Hook.
+    // It's safer than erroring early at runtime.
+    const controller = new AbortController();
+    const reason = new Error('This CacheSignal was requested outside React which means that it is ' + 'immediately aborted.');
+    controller.abort(reason);
+    return controller.signal;
+  }
+
+  return dispatcher.getCacheSignal();
+}
+function getCacheForType(resourceType) {
+  const dispatcher = ReactCurrentCache.current;
+
+  if (!dispatcher) {
+    // If there is no dispatcher, then we treat this as not being cached.
+    return resourceType();
+  }
+
+  return dispatcher.getCacheForType(resourceType);
 }
 function useContext(Context) {
   const dispatcher = resolveDispatcher();
@@ -1012,6 +1059,16 @@ function use(usable) {
   const dispatcher = resolveDispatcher();
   return dispatcher.use(usable);
 }
+function useMemoCache(size) {
+  const dispatcher = resolveDispatcher(); // $FlowFixMe[not-a-function] This is unstable, thus optional
+
+  return dispatcher.useMemoCache(size);
+}
+function useEffectEvent(callback) {
+  const dispatcher = resolveDispatcher(); // $FlowFixMe[not-a-function] This is unstable, thus optional
+
+  return dispatcher.useEffectEvent(callback);
+}
 function useOptimistic(passthrough, reducer) {
   const dispatcher = resolveDispatcher(); // $FlowFixMe[not-a-function] This is unstable, thus optional
 
@@ -1026,12 +1083,69 @@ const ReactCurrentBatchConfig = {
   transition: null
 };
 
+const ContextRegistry = {};
+
 const ReactSharedInternals = {
   ReactCurrentDispatcher,
   ReactCurrentCache,
   ReactCurrentBatchConfig,
   ReactCurrentOwner
 };
+
+{
+  ReactSharedInternals.ContextRegistry = ContextRegistry;
+}
+
+function createServerContext(globalName, defaultValue) {
+
+  let wasDefined = true;
+
+  if (!ContextRegistry[globalName]) {
+    wasDefined = false;
+    const context = {
+      $$typeof: REACT_SERVER_CONTEXT_TYPE,
+      // As a workaround to support multiple concurrent renderers, we categorize
+      // some renderers as primary and others as secondary. We only expect
+      // there to be two concurrent renderers at most: React Native (primary) and
+      // Fabric (secondary); React DOM (primary) and React ART (secondary).
+      // Secondary renderers store their context values on separate fields.
+      _currentValue: defaultValue,
+      _currentValue2: defaultValue,
+      _defaultValue: defaultValue,
+      // Used to track how many concurrent renderers this context currently
+      // supports within in a single renderer. Such as parallel server rendering.
+      _threadCount: 0,
+      // These are circular
+      Provider: null,
+      Consumer: null,
+      _globalName: globalName
+    };
+    context.Provider = {
+      $$typeof: REACT_PROVIDER_TYPE,
+      _context: context
+    };
+
+    ContextRegistry[globalName] = context;
+  }
+
+  const context = ContextRegistry[globalName];
+
+  if (context._defaultValue === REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED) {
+    context._defaultValue = defaultValue;
+
+    if (context._currentValue === REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED) {
+      context._currentValue = defaultValue;
+    }
+
+    if (context._currentValue2 === REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED) {
+      context._currentValue2 = defaultValue;
+    }
+  } else if (wasDefined) {
+    throw new Error("ServerContext: " + globalName + " already defined");
+  }
+
+  return context;
+}
 
 function startTransition(scope, options) {
   const prevTransition = ReactCurrentBatchConfig.transition;
@@ -1061,6 +1175,11 @@ const Children = {
   only: onlyChild
 };
 
+function experimental_useOptimistic(passthrough, reducer) {
+
+  return useOptimistic(passthrough, reducer);
+}
+
 exports.Children = Children;
 exports.Component = Component;
 exports.Fragment = REACT_FRAGMENT_TYPE;
@@ -1075,13 +1194,27 @@ exports.createContext = createContext;
 exports.createElement = createElement;
 exports.createFactory = createFactory;
 exports.createRef = createRef;
+exports.createServerContext = createServerContext;
+exports.experimental_useEffectEvent = useEffectEvent;
+exports.experimental_useOptimistic = experimental_useOptimistic;
 exports.forwardRef = forwardRef;
 exports.isValidElement = isValidElement;
 exports.lazy = lazy;
 exports.memo = memo;
 exports.startTransition = startTransition;
+exports.unstable_Activity = REACT_OFFSCREEN_TYPE;
+exports.unstable_Cache = REACT_CACHE_TYPE;
+exports.unstable_DebugTracingMode = REACT_DEBUG_TRACING_MODE_TYPE;
+exports.unstable_LegacyHidden = REACT_LEGACY_HIDDEN_TYPE;
+exports.unstable_Scope = REACT_SCOPE_TYPE;
+exports.unstable_SuspenseList = REACT_SUSPENSE_LIST_TYPE;
+exports.unstable_TracingMarker = REACT_TRACING_MARKER_TYPE;
 exports.unstable_act = act;
+exports.unstable_getCacheForType = getCacheForType;
+exports.unstable_getCacheSignal = getCacheSignal;
+exports.unstable_postpone = postpone;
 exports.unstable_useCacheRefresh = useCacheRefresh;
+exports.unstable_useMemoCache = useMemoCache;
 exports.use = use;
 exports.useCallback = useCallback;
 exports.useContext = useContext;
