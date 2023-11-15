@@ -8,10 +8,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-'use strict';
+"use strict";
 
-var React = require('next/dist/compiled/react');
-var ReactDOM = require('react-dom');
+var React = require("next/dist/compiled/react");
+var ReactDOM = require("react-dom");
 
 /**
  * `ReactInstanceMap` maintains a mapping from a public facing stateful
@@ -37,14 +37,14 @@ const HostHoistable = 26;
 const HostSingleton = 27;
 
 const NoFlags =
-/*                      */
-0b0000000000000000000000000000;
+  /*                      */
+  0b0000000000000000000000000000;
 const Placement =
-/*                    */
-0b0000000000000000000000000010;
+  /*                    */
+  0b0000000000000000000000000010;
 const Hydrating =
-/*                    */
-0b0000000000000001000000000000; // You can change the rest (and add more).
+  /*                    */
+  0b0000000000000001000000000000; // You can change the rest (and add more).
 
 function getNearestMountedFiber(fiber) {
   let node = fiber;
@@ -65,7 +65,6 @@ function getNearestMountedFiber(fiber) {
         nearestMounted = node.return;
       } // $FlowFixMe[incompatible-type] we bail out when we get a null
 
-
       nextNode = node.return;
     } while (nextNode);
   } else {
@@ -81,13 +80,12 @@ function getNearestMountedFiber(fiber) {
   } // If we didn't hit the root, that means that we're in an disconnected tree
   // that has been unmounted.
 
-
   return null;
 }
 
 function assertIsMounted(fiber) {
   if (getNearestMountedFiber(fiber) !== fiber) {
-    throw new Error('Unable to find node on an unmounted component.');
+    throw new Error("Unable to find node on an unmounted component.");
   }
 }
 
@@ -99,7 +97,7 @@ function findCurrentFiberUsingSlowPath(fiber) {
     const nearestMounted = getNearestMountedFiber(fiber);
 
     if (nearestMounted === null) {
-      throw new Error('Unable to find node on an unmounted component.');
+      throw new Error("Unable to find node on an unmounted component.");
     }
 
     if (nearestMounted !== fiber) {
@@ -110,7 +108,6 @@ function findCurrentFiberUsingSlowPath(fiber) {
   } // If we have two possible branches, we'll walk backwards up to the root
   // to see what path the root points to. On the way we may hit one of the
   // special cases and we'll deal with them.
-
 
   let a = fiber;
   let b = alternate;
@@ -137,12 +134,10 @@ function findCurrentFiberUsingSlowPath(fiber) {
         continue;
       } // If there's no parent, we're at the root.
 
-
       break;
     } // If both copies of the parent fiber point to the same child, we can
     // assume that the child is current. This happens when we bailout on low
     // priority: the bailed out fiber's child reuses the current child.
-
 
     if (parentA.child === parentB.child) {
       let child = parentA.child;
@@ -164,8 +159,7 @@ function findCurrentFiberUsingSlowPath(fiber) {
       } // We should never have an alternate for any mounting node. So the only
       // way this could possibly happen is if this was unmounted, if at all.
 
-
-      throw new Error('Unable to find node on an unmounted component.');
+      throw new Error("Unable to find node on an unmounted component.");
     }
 
     if (a.return !== b.return) {
@@ -225,27 +219,31 @@ function findCurrentFiberUsingSlowPath(fiber) {
         }
 
         if (!didFindChild) {
-          throw new Error('Child was not found in either parent set. This indicates a bug ' + 'in React related to the return pointer. Please file an issue.');
+          throw new Error(
+            "Child was not found in either parent set. This indicates a bug " +
+              "in React related to the return pointer. Please file an issue."
+          );
         }
       }
     }
 
     if (a.alternate !== b) {
-      throw new Error("Return fibers should always be each others' alternates. " + 'This error is likely caused by a bug in React. Please file an issue.');
+      throw new Error(
+        "Return fibers should always be each others' alternates. " +
+          "This error is likely caused by a bug in React. Please file an issue."
+      );
     }
   } // If the root is not a host container, we're in a disconnected tree. I.e.
   // unmounted.
 
-
   if (a.tag !== HostRoot) {
-    throw new Error('Unable to find node on an unmounted component.');
+    throw new Error("Unable to find node on an unmounted component.");
   }
 
   if (a.stateNode.current === a) {
     // We've determined that A is the current branch.
     return fiber;
   } // Otherwise B has to be current branch.
-
 
   return alternate;
 }
@@ -266,7 +264,7 @@ function getEventCharCode(nativeEvent) {
   let charCode;
   const keyCode = nativeEvent.keyCode;
 
-  if ('charCode' in nativeEvent) {
+  if ("charCode" in nativeEvent) {
     charCode = nativeEvent.charCode; // FF does not set `charCode` for the Enter-key, check against `keyCode`.
 
     if (charCode === 0 && keyCode === 13) {
@@ -278,12 +276,10 @@ function getEventCharCode(nativeEvent) {
   } // IE and Edge (on Windows) and Chrome / Safari (on Windows and Linux)
   // report Enter as charCode 10 when ctrl is pressed.
 
-
   if (charCode === 10) {
     charCode = 13;
   } // Some non-printable keys are reported in `charCode`/`keyCode`, discard them.
   // Must not discard the (non-)printable Enter-key.
-
 
   if (charCode >= 32 || charCode === 13) {
     return charCode;
@@ -301,7 +297,6 @@ function functionThatReturnsFalse() {
 } // This is intentionally a factory so that we have different returned constructors.
 // If we had a single constructor, it would be megamorphic and engines would deopt.
 
-
 function createSyntheticEvent(Interface) {
   /**
    * Synthetic events are dispatched by event plugins, typically in response to a
@@ -317,7 +312,13 @@ function createSyntheticEvent(Interface) {
    * DOM interface; custom application-specific events can also subclass this.
    */
   // $FlowFixMe[missing-this-annot]
-  function SyntheticBaseEvent(reactName, reactEventType, targetInst, nativeEvent, nativeEventTarget) {
+  function SyntheticBaseEvent(
+    reactName,
+    reactEventType,
+    targetInst,
+    nativeEvent,
+    nativeEventTarget
+  ) {
     this._reactName = reactName;
     this._targetInst = targetInst;
     this.type = reactEventType;
@@ -339,7 +340,10 @@ function createSyntheticEvent(Interface) {
       }
     }
 
-    const defaultPrevented = nativeEvent.defaultPrevented != null ? nativeEvent.defaultPrevented : nativeEvent.returnValue === false;
+    const defaultPrevented =
+      nativeEvent.defaultPrevented != null
+        ? nativeEvent.defaultPrevented
+        : nativeEvent.returnValue === false;
 
     if (defaultPrevented) {
       this.isDefaultPrevented = functionThatReturnsTrue;
@@ -350,7 +354,6 @@ function createSyntheticEvent(Interface) {
     this.isPropagationStopped = functionThatReturnsFalse;
     return this;
   } // $FlowFixMe[prop-missing] found when upgrading Flow
-
 
   assign(SyntheticBaseEvent.prototype, {
     // $FlowFixMe[missing-this-annot]
@@ -364,7 +367,7 @@ function createSyntheticEvent(Interface) {
 
       if (event.preventDefault) {
         event.preventDefault(); // $FlowFixMe[illegal-typeof] - flow is not aware of `unknown` in IE
-      } else if (typeof event.returnValue !== 'unknown') {
+      } else if (typeof event.returnValue !== "unknown") {
         event.returnValue = false;
       }
 
@@ -380,7 +383,7 @@ function createSyntheticEvent(Interface) {
 
       if (event.stopPropagation) {
         event.stopPropagation(); // $FlowFixMe[illegal-typeof] - flow is not aware of `unknown` in IE
-      } else if (typeof event.cancelBubble !== 'unknown') {
+      } else if (typeof event.cancelBubble !== "unknown") {
         // The ChangeEventPlugin registers a "propertychange" event for
         // IE. This event does not support bubbling or cancelling, and
         // any references to cancelBubble throw "Member not found".  A
@@ -397,7 +400,8 @@ function createSyntheticEvent(Interface) {
      * them back into the pool. This allows a way to hold onto a reference that
      * won't be added back into the pool.
      */
-    persist: function () {// Modern event system doesn't use pooling.
+    persist: function () {
+      // Modern event system doesn't use pooling.
     },
 
     /**
@@ -405,7 +409,7 @@ function createSyntheticEvent(Interface) {
      *
      * @return {boolean} True if this should not be released, false otherwise.
      */
-    isPersistent: functionThatReturnsTrue
+    isPersistent: functionThatReturnsTrue,
   });
   return SyntheticBaseEvent;
 }
@@ -413,7 +417,6 @@ function createSyntheticEvent(Interface) {
  * @interface Event
  * @see http://www.w3.org/TR/DOM-Level-3-Events/
  */
-
 
 const EventInterface = {
   eventPhase: 0,
@@ -423,13 +426,13 @@ const EventInterface = {
     return event.timeStamp || Date.now();
   },
   defaultPrevented: 0,
-  isTrusted: 0
+  isTrusted: 0,
 };
 const SyntheticEvent = createSyntheticEvent(EventInterface);
 
 const UIEventInterface = assign({}, EventInterface, {
   view: 0,
-  detail: 0
+  detail: 0,
 });
 
 createSyntheticEvent(UIEventInterface);
@@ -439,7 +442,7 @@ let lastMouseEvent;
 
 function updateMouseMovementPolyfillState(event) {
   if (event !== lastMouseEvent) {
-    if (lastMouseEvent && event.type === 'mousemove') {
+    if (lastMouseEvent && event.type === "mousemove") {
       // $FlowFixMe[unsafe-arithmetic] assuming this is a number
       lastMovementX = event.screenX - lastMouseEvent.screenX; // $FlowFixMe[unsafe-arithmetic] assuming this is a number
 
@@ -457,7 +460,6 @@ function updateMouseMovementPolyfillState(event) {
  * @see http://www.w3.org/TR/DOM-Level-3-Events/
  */
 
-
 const MouseEventInterface = assign({}, UIEventInterface, {
   screenX: 0,
   screenY: 0,
@@ -473,11 +475,14 @@ const MouseEventInterface = assign({}, UIEventInterface, {
   button: 0,
   buttons: 0,
   relatedTarget: function (event) {
-    if (event.relatedTarget === undefined) return event.fromElement === event.srcElement ? event.toElement : event.fromElement;
+    if (event.relatedTarget === undefined)
+      return event.fromElement === event.srcElement
+        ? event.toElement
+        : event.fromElement;
     return event.relatedTarget;
   },
   movementX: function (event) {
-    if ('movementX' in event) {
+    if ("movementX" in event) {
       return event.movementX;
     }
 
@@ -485,15 +490,14 @@ const MouseEventInterface = assign({}, UIEventInterface, {
     return lastMovementX;
   },
   movementY: function (event) {
-    if ('movementY' in event) {
+    if ("movementY" in event) {
       return event.movementY;
     } // Don't need to call updateMouseMovementPolyfillState() here
     // because it's guaranteed to have already run when movementX
     // was copied.
 
-
     return lastMovementY;
-  }
+  },
 });
 
 createSyntheticEvent(MouseEventInterface);
@@ -503,7 +507,7 @@ createSyntheticEvent(MouseEventInterface);
  */
 
 const DragEventInterface = assign({}, MouseEventInterface, {
-  dataTransfer: 0
+  dataTransfer: 0,
 });
 
 createSyntheticEvent(DragEventInterface);
@@ -513,7 +517,7 @@ createSyntheticEvent(DragEventInterface);
  */
 
 const FocusEventInterface = assign({}, UIEventInterface, {
-  relatedTarget: 0
+  relatedTarget: 0,
 });
 
 createSyntheticEvent(FocusEventInterface);
@@ -526,7 +530,7 @@ createSyntheticEvent(FocusEventInterface);
 const AnimationEventInterface = assign({}, EventInterface, {
   animationName: 0,
   elapsedTime: 0,
-  pseudoElement: 0
+  pseudoElement: 0,
 });
 
 createSyntheticEvent(AnimationEventInterface);
@@ -537,8 +541,10 @@ createSyntheticEvent(AnimationEventInterface);
 
 const ClipboardEventInterface = assign({}, EventInterface, {
   clipboardData: function (event) {
-    return 'clipboardData' in event ? event.clipboardData : window.clipboardData;
-  }
+    return "clipboardData" in event
+      ? event.clipboardData
+      : window.clipboardData;
+  },
 });
 
 createSyntheticEvent(ClipboardEventInterface);
@@ -548,7 +554,7 @@ createSyntheticEvent(ClipboardEventInterface);
  */
 
 const CompositionEventInterface = assign({}, EventInterface, {
-  data: 0
+  data: 0,
 });
 
 createSyntheticEvent(CompositionEventInterface);
@@ -558,18 +564,18 @@ createSyntheticEvent(CompositionEventInterface);
  */
 
 const normalizeKey = {
-  Esc: 'Escape',
-  Spacebar: ' ',
-  Left: 'ArrowLeft',
-  Up: 'ArrowUp',
-  Right: 'ArrowRight',
-  Down: 'ArrowDown',
-  Del: 'Delete',
-  Win: 'OS',
-  Menu: 'ContextMenu',
-  Apps: 'ContextMenu',
-  Scroll: 'ScrollLock',
-  MozPrintableKey: 'Unidentified'
+  Esc: "Escape",
+  Spacebar: " ",
+  Left: "ArrowLeft",
+  Up: "ArrowUp",
+  Right: "ArrowRight",
+  Down: "ArrowDown",
+  Del: "Delete",
+  Win: "OS",
+  Menu: "ContextMenu",
+  Apps: "ContextMenu",
+  Scroll: "ScrollLock",
+  MozPrintableKey: "Unidentified",
 };
 /**
  * Translation from legacy `keyCode` to HTML5 `key`
@@ -578,42 +584,42 @@ const normalizeKey = {
  */
 
 const translateToKey = {
-  '8': 'Backspace',
-  '9': 'Tab',
-  '12': 'Clear',
-  '13': 'Enter',
-  '16': 'Shift',
-  '17': 'Control',
-  '18': 'Alt',
-  '19': 'Pause',
-  '20': 'CapsLock',
-  '27': 'Escape',
-  '32': ' ',
-  '33': 'PageUp',
-  '34': 'PageDown',
-  '35': 'End',
-  '36': 'Home',
-  '37': 'ArrowLeft',
-  '38': 'ArrowUp',
-  '39': 'ArrowRight',
-  '40': 'ArrowDown',
-  '45': 'Insert',
-  '46': 'Delete',
-  '112': 'F1',
-  '113': 'F2',
-  '114': 'F3',
-  '115': 'F4',
-  '116': 'F5',
-  '117': 'F6',
-  '118': 'F7',
-  '119': 'F8',
-  '120': 'F9',
-  '121': 'F10',
-  '122': 'F11',
-  '123': 'F12',
-  '144': 'NumLock',
-  '145': 'ScrollLock',
-  '224': 'Meta'
+  8: "Backspace",
+  9: "Tab",
+  12: "Clear",
+  13: "Enter",
+  16: "Shift",
+  17: "Control",
+  18: "Alt",
+  19: "Pause",
+  20: "CapsLock",
+  27: "Escape",
+  32: " ",
+  33: "PageUp",
+  34: "PageDown",
+  35: "End",
+  36: "Home",
+  37: "ArrowLeft",
+  38: "ArrowUp",
+  39: "ArrowRight",
+  40: "ArrowDown",
+  45: "Insert",
+  46: "Delete",
+  112: "F1",
+  113: "F2",
+  114: "F3",
+  115: "F4",
+  116: "F5",
+  117: "F6",
+  118: "F7",
+  119: "F8",
+  120: "F9",
+  121: "F10",
+  122: "F11",
+  123: "F12",
+  144: "NumLock",
+  145: "ScrollLock",
+  224: "Meta",
 };
 /**
  * @param {object} nativeEvent Native browser event.
@@ -626,43 +632,42 @@ function getEventKey(nativeEvent) {
     // implementations of a working draft specification.
     // FireFox implements `key` but returns `MozPrintableKey` for all
     // printable characters (normalized to `Unidentified`), ignore it.
-    const key = // $FlowFixMe[invalid-computed-prop] unable to index with a `mixed` value
-    normalizeKey[nativeEvent.key] || nativeEvent.key;
+    const key = normalizeKey[nativeEvent.key] || nativeEvent.key; // $FlowFixMe[invalid-computed-prop] unable to index with a `mixed` value
 
-    if (key !== 'Unidentified') {
+    if (key !== "Unidentified") {
       return key;
     }
   } // Browser does not implement `key`, polyfill as much of it as we can.
 
-
-  if (nativeEvent.type === 'keypress') {
-    const charCode = getEventCharCode( // $FlowFixMe[incompatible-call] unable to narrow to `KeyboardEvent`
-    nativeEvent); // The enter-key is technically both printable and non-printable and can
+  if (nativeEvent.type === "keypress") {
+    const charCode = getEventCharCode(
+      // $FlowFixMe[incompatible-call] unable to narrow to `KeyboardEvent`
+      nativeEvent
+    ); // The enter-key is technically both printable and non-printable and can
     // thus be captured by `keypress`, no other non-printable key should.
 
-    return charCode === 13 ? 'Enter' : String.fromCharCode(charCode);
+    return charCode === 13 ? "Enter" : String.fromCharCode(charCode);
   }
 
-  if (nativeEvent.type === 'keydown' || nativeEvent.type === 'keyup') {
+  if (nativeEvent.type === "keydown" || nativeEvent.type === "keyup") {
     // While user keyboard layout determines the actual meaning of each
     // `keyCode` value, almost all function keys have a universal value.
     // $FlowFixMe[invalid-computed-prop] unable to index with a `mixed` value
-    return translateToKey[nativeEvent.keyCode] || 'Unidentified';
+    return translateToKey[nativeEvent.keyCode] || "Unidentified";
   }
 
-  return '';
+  return "";
 }
 /**
  * Translation from modifier key to the associated property in the event.
  * @see http://www.w3.org/TR/DOM-Level-3-Events/#keys-Modifiers
  */
 
-
 const modifierKeyToProp = {
-  Alt: 'altKey',
-  Control: 'ctrlKey',
-  Meta: 'metaKey',
-  Shift: 'shiftKey'
+  Alt: "altKey",
+  Control: "ctrlKey",
+  Meta: "metaKey",
+  Shift: "shiftKey",
 }; // Older browsers (Safari <= 10, iOS Safari <= 10.2) do not support
 // getModifierState. If getModifierState is not supported, we map it to a set of
 // modifier keys exposed by the event. In this case, Lock-keys are not supported.
@@ -689,7 +694,6 @@ function getEventModifierState(nativeEvent) {
  * @see http://www.w3.org/TR/DOM-Level-3-Events/
  */
 
-
 const KeyboardEventInterface = assign({}, UIEventInterface, {
   key: getEventKey,
   code: 0,
@@ -707,9 +711,11 @@ const KeyboardEventInterface = assign({}, UIEventInterface, {
     // the actual printable character.
     // KeyPress is deprecated, but its replacement is not yet final and not
     // implemented in any major browser. Only KeyPress has charCode.
-    if (event.type === 'keypress') {
-      return getEventCharCode( // $FlowFixMe[incompatible-call] unable to narrow to `KeyboardEvent`
-      event);
+    if (event.type === "keypress") {
+      return getEventCharCode(
+        // $FlowFixMe[incompatible-call] unable to narrow to `KeyboardEvent`
+        event
+      );
     }
 
     return 0;
@@ -721,7 +727,7 @@ const KeyboardEventInterface = assign({}, UIEventInterface, {
     // which cannot be detected. Assuming that it is a US keyboard layout
     // provides a surprisingly accurate mapping for US and European users.
     // Due to this, it is left to the user to implement at this time.
-    if (event.type === 'keydown' || event.type === 'keyup') {
+    if (event.type === "keydown" || event.type === "keyup") {
       return event.keyCode;
     }
 
@@ -730,17 +736,19 @@ const KeyboardEventInterface = assign({}, UIEventInterface, {
   which: function (event) {
     // `which` is an alias for either `keyCode` or `charCode` depending on the
     // type of the event.
-    if (event.type === 'keypress') {
-      return getEventCharCode( // $FlowFixMe[incompatible-call] unable to narrow to `KeyboardEvent`
-      event);
+    if (event.type === "keypress") {
+      return getEventCharCode(
+        // $FlowFixMe[incompatible-call] unable to narrow to `KeyboardEvent`
+        event
+      );
     }
 
-    if (event.type === 'keydown' || event.type === 'keyup') {
+    if (event.type === "keydown" || event.type === "keyup") {
       return event.keyCode;
     }
 
     return 0;
-  }
+  },
 });
 
 createSyntheticEvent(KeyboardEventInterface);
@@ -759,7 +767,7 @@ const PointerEventInterface = assign({}, MouseEventInterface, {
   tiltY: 0,
   twist: 0,
   pointerType: 0,
-  isPrimary: 0
+  isPrimary: 0,
 });
 
 createSyntheticEvent(PointerEventInterface);
@@ -776,7 +784,7 @@ const TouchEventInterface = assign({}, UIEventInterface, {
   metaKey: 0,
   ctrlKey: 0,
   shiftKey: 0,
-  getModifierState: getEventModifierState
+  getModifierState: getEventModifierState,
 });
 
 createSyntheticEvent(TouchEventInterface);
@@ -789,7 +797,7 @@ createSyntheticEvent(TouchEventInterface);
 const TransitionEventInterface = assign({}, EventInterface, {
   propertyName: 0,
   elapsedTime: 0,
-  pseudoElement: 0
+  pseudoElement: 0,
 });
 
 createSyntheticEvent(TransitionEventInterface);
@@ -800,17 +808,21 @@ createSyntheticEvent(TransitionEventInterface);
 
 const WheelEventInterface = assign({}, MouseEventInterface, {
   deltaX(event) {
-    return 'deltaX' in event ? event.deltaX : // Fallback to `wheelDeltaX` for Webkit and normalize (right is positive).
-    'wheelDeltaX' in event ? // $FlowFixMe[unsafe-arithmetic] assuming this is a number
-    -event.wheelDeltaX : 0;
+    return "deltaX" in event
+      ? event.deltaX // Fallback to `wheelDeltaX` for Webkit and normalize (right is positive).
+      : "wheelDeltaX" in event // $FlowFixMe[unsafe-arithmetic] assuming this is a number
+      ? -event.wheelDeltaX
+      : 0;
   },
 
   deltaY(event) {
-    return 'deltaY' in event ? event.deltaY : // Fallback to `wheelDeltaY` for Webkit and normalize (down is positive).
-    'wheelDeltaY' in event ? // $FlowFixMe[unsafe-arithmetic] assuming this is a number
-    -event.wheelDeltaY : // Fallback to `wheelDelta` for IE<9 and normalize (down is positive).
-    'wheelDelta' in event ? // $FlowFixMe[unsafe-arithmetic] assuming this is a number
-    -event.wheelDelta : 0;
+    return "deltaY" in event
+      ? event.deltaY // Fallback to `wheelDeltaY` for Webkit and normalize (down is positive).
+      : "wheelDeltaY" in event // $FlowFixMe[unsafe-arithmetic] assuming this is a number
+      ? -event.wheelDeltaY // Fallback to `wheelDelta` for IE<9 and normalize (down is positive).
+      : "wheelDelta" in event // $FlowFixMe[unsafe-arithmetic] assuming this is a number
+      ? -event.wheelDelta
+      : 0;
   },
 
   deltaZ: 0,
@@ -818,7 +830,7 @@ const WheelEventInterface = assign({}, MouseEventInterface, {
   // notch on the scroll is always +/- 120, roughly equivalent to pixels.
   // A good approximation of DOM_DELTA_LINE (1) is 5% of viewport size or
   // ~40 pixels, for DOM_DELTA_SCREEN (2) it is 87.5% of viewport size.
-  deltaMode: 0
+  deltaMode: 0,
 });
 
 createSyntheticEvent(WheelEventInterface);
@@ -851,8 +863,7 @@ const reporter = {
   onError(error) {
     hasError = true;
     caughtError = error;
-  }
-
+  },
 };
 /**
  * Call a function while guarding against errors that happens within it.
@@ -884,7 +895,17 @@ function invokeGuardedCallback(name, func, context, a, b, c, d, e, f) {
  * @param {...*} args Arguments for function
  */
 
-function invokeGuardedCallbackAndCatchFirstError(name, func, context, a, b, c, d, e, f) {
+function invokeGuardedCallbackAndCatchFirstError(
+  name,
+  func,
+  context,
+  a,
+  b,
+  c,
+  d,
+  e,
+  f
+) {
   invokeGuardedCallback.apply(this, arguments);
 
   if (hasError) {
@@ -916,7 +937,10 @@ function clearCaughtError() {
     caughtError = null;
     return error;
   } else {
-    throw new Error('clearCaughtError was called but no error was captured. This error ' + 'is likely caused by a bug in React. Please file an issue.');
+    throw new Error(
+      "clearCaughtError was called but no error was captured. This error " +
+        "is likely caused by a bug in React. Please file an issue."
+    );
   }
 }
 
@@ -926,7 +950,8 @@ function isArray(a) {
   return isArrayImpl(a);
 }
 
-const SecretInternals = ReactDOM.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+const SecretInternals =
+  ReactDOM.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
 const EventInternals = SecretInternals.Events;
 const getInstanceFromNode = EventInternals[0];
 const getNodeFromInstance = EventInternals[1];
@@ -955,7 +980,14 @@ function findAllInRenderedFiberTreeInternal(fiber, test) {
   const ret = [];
 
   while (true) {
-    if (node.tag === HostComponent || node.tag === HostText || node.tag === ClassComponent || node.tag === FunctionComponent || (node.tag === HostHoistable ) || (node.tag === HostSingleton )) {
+    if (
+      node.tag === HostComponent ||
+      node.tag === HostText ||
+      node.tag === ClassComponent ||
+      node.tag === FunctionComponent ||
+      node.tag === HostHoistable ||
+      node.tag === HostSingleton
+    ) {
       const publicInst = node.stateNode;
 
       if (test(publicInst)) {
@@ -1001,16 +1033,20 @@ function validateClassInstance(inst, methodName) {
   const stringified = String(inst);
 
   if (isArray(inst)) {
-    received = 'an array';
+    received = "an array";
   } else if (inst && inst.nodeType === ELEMENT_NODE && inst.tagName) {
-    received = 'a DOM node';
-  } else if (stringified === '[object Object]') {
-    received = 'object with keys {' + Object.keys(inst).join(', ') + '}';
+    received = "a DOM node";
+  } else if (stringified === "[object Object]") {
+    received = "object with keys {" + Object.keys(inst).join(", ") + "}";
   } else {
     received = stringified;
   }
 
-  throw new Error(methodName + "(...): the first argument must be a React class instance. " + ("Instead received: " + received + "."));
+  throw new Error(
+    methodName +
+      "(...): the first argument must be a React class instance. " +
+      ("Instead received: " + received + ".")
+  );
 }
 /**
  * Utilities for making it easy to test React components.
@@ -1022,9 +1058,8 @@ function validateClassInstance(inst, methodName) {
  * @lends ReactTestUtils
  */
 
-
 function renderIntoDocument(element) {
-  const div = document.createElement('div'); // None of our tests actually require attaching the container to the
+  const div = document.createElement("div"); // None of our tests actually require attaching the container to the
   // DOM, and doing so creates a mess that we rely on test isolation to
   // clean up, so we're going to stop honoring the name of this method
   // (and probably rename it eventually) if no problems arise.
@@ -1056,7 +1091,11 @@ function isCompositeComponent(inst) {
     return false;
   }
 
-  return inst != null && typeof inst.render === 'function' && typeof inst.setState === 'function';
+  return (
+    inst != null &&
+    typeof inst.render === "function" &&
+    typeof inst.setState === "function"
+  );
 }
 
 function isCompositeComponentWithType(inst, type) {
@@ -1070,7 +1109,7 @@ function isCompositeComponentWithType(inst, type) {
 }
 
 function findAllInRenderedTree(inst, test) {
-  validateClassInstance(inst, 'findAllInRenderedTree');
+  validateClassInstance(inst, "findAllInRenderedTree");
 
   if (!inst) {
     return [];
@@ -1085,23 +1124,25 @@ function findAllInRenderedTree(inst, test) {
  * @return {array} an array of all the matches.
  */
 
-
 function scryRenderedDOMComponentsWithClass(root, classNames) {
-  validateClassInstance(root, 'scryRenderedDOMComponentsWithClass');
+  validateClassInstance(root, "scryRenderedDOMComponentsWithClass");
   return findAllInRenderedTree(root, function (inst) {
     if (isDOMComponent(inst)) {
       let className = inst.className;
 
-      if (typeof className !== 'string') {
+      if (typeof className !== "string") {
         // SVG, probably.
-        className = inst.getAttribute('class') || '';
+        className = inst.getAttribute("class") || "";
       }
 
       const classList = className.split(/\s+/);
 
       if (!isArray(classNames)) {
         if (classNames === undefined) {
-          throw new Error('TestUtils.scryRenderedDOMComponentsWithClass expects a ' + 'className as a second argument.');
+          throw new Error(
+            "TestUtils.scryRenderedDOMComponentsWithClass expects a " +
+              "className as a second argument."
+          );
         }
 
         classNames = classNames.split(/\s+/);
@@ -1122,13 +1163,18 @@ function scryRenderedDOMComponentsWithClass(root, classNames) {
  * @return {!ReactDOMComponent} The one match.
  */
 
-
 function findRenderedDOMComponentWithClass(root, className) {
-  validateClassInstance(root, 'findRenderedDOMComponentWithClass');
+  validateClassInstance(root, "findRenderedDOMComponentWithClass");
   const all = scryRenderedDOMComponentsWithClass(root, className);
 
   if (all.length !== 1) {
-    throw new Error('Did not find exactly one match (found: ' + all.length + ') ' + 'for class:' + className);
+    throw new Error(
+      "Did not find exactly one match (found: " +
+        all.length +
+        ") " +
+        "for class:" +
+        className
+    );
   }
 
   return all[0];
@@ -1139,11 +1185,13 @@ function findRenderedDOMComponentWithClass(root, className) {
  * @return {array} an array of all the matches.
  */
 
-
 function scryRenderedDOMComponentsWithTag(root, tagName) {
-  validateClassInstance(root, 'scryRenderedDOMComponentsWithTag');
+  validateClassInstance(root, "scryRenderedDOMComponentsWithTag");
   return findAllInRenderedTree(root, function (inst) {
-    return isDOMComponent(inst) && inst.tagName.toUpperCase() === tagName.toUpperCase();
+    return (
+      isDOMComponent(inst) &&
+      inst.tagName.toUpperCase() === tagName.toUpperCase()
+    );
   });
 }
 /**
@@ -1153,13 +1201,18 @@ function scryRenderedDOMComponentsWithTag(root, tagName) {
  * @return {!ReactDOMComponent} The one match.
  */
 
-
 function findRenderedDOMComponentWithTag(root, tagName) {
-  validateClassInstance(root, 'findRenderedDOMComponentWithTag');
+  validateClassInstance(root, "findRenderedDOMComponentWithTag");
   const all = scryRenderedDOMComponentsWithTag(root, tagName);
 
   if (all.length !== 1) {
-    throw new Error('Did not find exactly one match (found: ' + all.length + ') ' + 'for tag:' + tagName);
+    throw new Error(
+      "Did not find exactly one match (found: " +
+        all.length +
+        ") " +
+        "for tag:" +
+        tagName
+    );
   }
 
   return all[0];
@@ -1169,9 +1222,8 @@ function findRenderedDOMComponentWithTag(root, tagName) {
  * @return {array} an array of all the matches.
  */
 
-
 function scryRenderedComponentsWithType(root, componentType) {
-  validateClassInstance(root, 'scryRenderedComponentsWithType');
+  validateClassInstance(root, "scryRenderedComponentsWithType");
   return findAllInRenderedTree(root, function (inst) {
     return isCompositeComponentWithType(inst, componentType);
   });
@@ -1183,13 +1235,18 @@ function scryRenderedComponentsWithType(root, componentType) {
  * @return {!ReactComponent} The one match.
  */
 
-
 function findRenderedComponentWithType(root, componentType) {
-  validateClassInstance(root, 'findRenderedComponentWithType');
+  validateClassInstance(root, "findRenderedComponentWithType");
   const all = scryRenderedComponentsWithType(root, componentType);
 
   if (all.length !== 1) {
-    throw new Error('Did not find exactly one match (found: ' + all.length + ') ' + 'for componentType:' + componentType);
+    throw new Error(
+      "Did not find exactly one match (found: " +
+        all.length +
+        ") " +
+        "for componentType:" +
+        componentType
+    );
   }
 
   return all[0];
@@ -1208,10 +1265,8 @@ function findRenderedComponentWithType(root, componentType) {
  * @return {object} the ReactTestUtils object (for chaining)
  */
 
-
 function mockComponent(module, mockTagName) {
-
-  mockTagName = mockTagName || module.mockTagName || 'div';
+  mockTagName = mockTagName || module.mockTagName || "div";
   module.prototype.render.mockImplementation(function () {
     return React.createElement(mockTagName, null, this.props.children);
   });
@@ -1220,10 +1275,12 @@ function mockComponent(module, mockTagName) {
 
 function nativeTouchData(x, y) {
   return {
-    touches: [{
-      pageX: x,
-      pageY: y
-    }]
+    touches: [
+      {
+        pageX: x,
+        pageY: y,
+      },
+    ],
   };
 } // Start of inline: the below functions were inlined from
 // EventPropagator.js, as they deviated from ReactDOM's newer
@@ -1236,9 +1293,8 @@ function nativeTouchData(x, y) {
  * @param {*} inst Internal component instance
  */
 
-
 function executeDispatch(event, listener, inst) {
-  const type = event.type || 'unknown-event';
+  const type = event.type || "unknown-event";
   event.currentTarget = getNodeFromInstance(inst);
   invokeGuardedCallbackAndCatchFirstError(type, listener, undefined, event);
   event.currentTarget = null;
@@ -1246,7 +1302,6 @@ function executeDispatch(event, listener, inst) {
 /**
  * Standard/simple iteration through an event's collected dispatches.
  */
-
 
 function executeDispatchesInOrder(event) {
   const dispatchListeners = event._dispatchListeners;
@@ -1257,7 +1312,6 @@ function executeDispatchesInOrder(event) {
       if (event.isPropagationStopped()) {
         break;
       } // Listeners and Instances are two parallel arrays that are always in sync.
-
 
       executeDispatch(event, dispatchListeners[i], dispatchInstances[i]);
     }
@@ -1275,9 +1329,9 @@ function executeDispatchesInOrder(event) {
  * @private
  */
 
-
-function executeDispatchesAndRelease(event
-/* ReactSyntheticEvent */
+function executeDispatchesAndRelease(
+  event
+  /* ReactSyntheticEvent */
 ) {
   if (event) {
     executeDispatchesInOrder(event);
@@ -1289,7 +1343,12 @@ function executeDispatchesAndRelease(event
 }
 
 function isInteractive(tag) {
-  return tag === 'button' || tag === 'input' || tag === 'select' || tag === 'textarea';
+  return (
+    tag === "button" ||
+    tag === "input" ||
+    tag === "select" ||
+    tag === "textarea"
+  );
 }
 
 function getParent(inst) {
@@ -1299,7 +1358,7 @@ function getParent(inst) {
     // events to their parent. We could also go through parentNode on the
     // host node but that wouldn't work for React Native and doesn't let us
     // do the portal feature.
-  } while (inst && inst.tag !== HostComponent && (inst.tag !== HostSingleton));
+  } while (inst && inst.tag !== HostComponent && inst.tag !== HostSingleton);
 
   if (inst) {
     return inst;
@@ -1311,7 +1370,6 @@ function getParent(inst) {
  * Simulates the traversal of a two-phase, capture/bubble event dispatch.
  */
 
-
 function traverseTwoPhase(inst, fn, arg) {
   const path = [];
 
@@ -1322,28 +1380,28 @@ function traverseTwoPhase(inst, fn, arg) {
 
   let i;
 
-  for (i = path.length; i-- > 0;) {
-    fn(path[i], 'captured', arg);
+  for (i = path.length; i-- > 0; ) {
+    fn(path[i], "captured", arg);
   }
 
   for (i = 0; i < path.length; i++) {
-    fn(path[i], 'bubbled', arg);
+    fn(path[i], "bubbled", arg);
   }
 }
 
 function shouldPreventMouseEvent(name, type, props) {
   switch (name) {
-    case 'onClick':
-    case 'onClickCapture':
-    case 'onDoubleClick':
-    case 'onDoubleClickCapture':
-    case 'onMouseDown':
-    case 'onMouseDownCapture':
-    case 'onMouseMove':
-    case 'onMouseMoveCapture':
-    case 'onMouseUp':
-    case 'onMouseUpCapture':
-    case 'onMouseEnter':
+    case "onClick":
+    case "onClickCapture":
+    case "onDoubleClick":
+    case "onDoubleClickCapture":
+    case "onMouseDown":
+    case "onMouseDownCapture":
+    case "onMouseMove":
+    case "onMouseMoveCapture":
+    case "onMouseUp":
+    case "onMouseUpCapture":
+    case "onMouseEnter":
       return !!(props.disabled && isInteractive(type));
 
     default:
@@ -1356,10 +1414,11 @@ function shouldPreventMouseEvent(name, type, props) {
  * @return {?function} The stored callback.
  */
 
-
-function getListener(inst
-/* Fiber */
-, registrationName) {
+function getListener(
+  inst,
+  /* Fiber */
+  registrationName
+) {
   // TODO: shouldPreventMouseEvent is DOM-specific and definitely should not
   // live here; needs to be moved to a better place soon
   const stateNode = inst.stateNode;
@@ -1382,8 +1441,14 @@ function getListener(inst
     return null;
   }
 
-  if (listener && typeof listener !== 'function') {
-    throw new Error("Expected `" + registrationName + "` listener to be a function, instead got a value of `" + typeof listener + "` type.");
+  if (listener && typeof listener !== "function") {
+    throw new Error(
+      "Expected `" +
+        registrationName +
+        "` listener to be a function, instead got a value of `" +
+        typeof listener +
+        "` type."
+    );
   }
 
   return listener;
@@ -1392,8 +1457,8 @@ function getListener(inst
 function listenerAtPhase(inst, event, propagationPhase) {
   let registrationName = event._reactName;
 
-  if (propagationPhase === 'captured') {
-    registrationName += 'Capture';
+  if (propagationPhase === "captured") {
+    registrationName += "Capture";
   }
 
   return getListener(inst, registrationName);
@@ -1421,7 +1486,6 @@ function accumulateDispatches(inst, ignoredDirection, event) {
 }
 
 function accumulateDirectionalDispatches(inst, phase, event) {
-
   const listener = listenerAtPhase(inst, event, phase);
 
   if (listener) {
@@ -1451,9 +1515,13 @@ function accumulateTwoPhaseDispatchesSingle(event) {
   }
 } // End of inline
 
-
 const Simulate = {};
-const directDispatchEventTypes = new Set(['mouseEnter', 'mouseLeave', 'pointerEnter', 'pointerLeave']);
+const directDispatchEventTypes = new Set([
+  "mouseEnter",
+  "mouseLeave",
+  "pointerEnter",
+  "pointerLeave",
+]);
 /**
  * Exports:
  *
@@ -1466,19 +1534,32 @@ const directDispatchEventTypes = new Set(['mouseEnter', 'mouseLeave', 'pointerEn
 function makeSimulator(eventType) {
   return function (domNode, eventData) {
     if (React.isValidElement(domNode)) {
-      throw new Error('TestUtils.Simulate expected a DOM node as the first argument but received ' + 'a React element. Pass the DOM node you wish to simulate the event on instead. ' + 'Note that TestUtils.Simulate will not work if you are using shallow rendering.');
+      throw new Error(
+        "TestUtils.Simulate expected a DOM node as the first argument but received " +
+          "a React element. Pass the DOM node you wish to simulate the event on instead. " +
+          "Note that TestUtils.Simulate will not work if you are using shallow rendering."
+      );
     }
 
     if (isCompositeComponent(domNode)) {
-      throw new Error('TestUtils.Simulate expected a DOM node as the first argument but received ' + 'a component instance. Pass the DOM node you wish to simulate the event on instead.');
+      throw new Error(
+        "TestUtils.Simulate expected a DOM node as the first argument but received " +
+          "a component instance. Pass the DOM node you wish to simulate the event on instead."
+      );
     }
 
-    const reactName = 'on' + eventType[0].toUpperCase() + eventType.slice(1);
+    const reactName = "on" + eventType[0].toUpperCase() + eventType.slice(1);
     const fakeNativeEvent = new Event();
     fakeNativeEvent.target = domNode;
     fakeNativeEvent.type = eventType.toLowerCase();
     const targetInst = getInstanceFromNode(domNode);
-    const event = new SyntheticEvent(reactName, fakeNativeEvent.type, targetInst, fakeNativeEvent, domNode); // Since we aren't using pooling, always persist the event. This will make
+    const event = new SyntheticEvent(
+      reactName,
+      fakeNativeEvent.type,
+      targetInst,
+      fakeNativeEvent,
+      domNode
+    ); // Since we aren't using pooling, always persist the event. This will make
     // sure it's marked and won't warn when setting additional properties.
 
     event.persist();
@@ -1501,11 +1582,96 @@ function makeSimulator(eventType) {
   };
 } // A one-time snapshot with no plans to update. We'll probably want to deprecate Simulate API.
 
-
-const simulatedEventTypes = ['blur', 'cancel', 'click', 'close', 'contextMenu', 'copy', 'cut', 'auxClick', 'doubleClick', 'dragEnd', 'dragStart', 'drop', 'focus', 'input', 'invalid', 'keyDown', 'keyPress', 'keyUp', 'mouseDown', 'mouseUp', 'paste', 'pause', 'play', 'pointerCancel', 'pointerDown', 'pointerUp', 'rateChange', 'reset', 'resize', 'seeked', 'submit', 'touchCancel', 'touchEnd', 'touchStart', 'volumeChange', 'drag', 'dragEnter', 'dragExit', 'dragLeave', 'dragOver', 'mouseMove', 'mouseOut', 'mouseOver', 'pointerMove', 'pointerOut', 'pointerOver', 'scroll', 'toggle', 'touchMove', 'wheel', 'abort', 'animationEnd', 'animationIteration', 'animationStart', 'canPlay', 'canPlayThrough', 'durationChange', 'emptied', 'encrypted', 'ended', 'error', 'gotPointerCapture', 'load', 'loadedData', 'loadedMetadata', 'loadStart', 'lostPointerCapture', 'playing', 'progress', 'seeking', 'stalled', 'suspend', 'timeUpdate', 'transitionEnd', 'waiting', 'mouseEnter', 'mouseLeave', 'pointerEnter', 'pointerLeave', 'change', 'select', 'beforeInput', 'compositionEnd', 'compositionStart', 'compositionUpdate'];
+const simulatedEventTypes = [
+  "blur",
+  "cancel",
+  "click",
+  "close",
+  "contextMenu",
+  "copy",
+  "cut",
+  "auxClick",
+  "doubleClick",
+  "dragEnd",
+  "dragStart",
+  "drop",
+  "focus",
+  "input",
+  "invalid",
+  "keyDown",
+  "keyPress",
+  "keyUp",
+  "mouseDown",
+  "mouseUp",
+  "paste",
+  "pause",
+  "play",
+  "pointerCancel",
+  "pointerDown",
+  "pointerUp",
+  "rateChange",
+  "reset",
+  "resize",
+  "seeked",
+  "submit",
+  "touchCancel",
+  "touchEnd",
+  "touchStart",
+  "volumeChange",
+  "drag",
+  "dragEnter",
+  "dragExit",
+  "dragLeave",
+  "dragOver",
+  "mouseMove",
+  "mouseOut",
+  "mouseOver",
+  "pointerMove",
+  "pointerOut",
+  "pointerOver",
+  "scroll",
+  "toggle",
+  "touchMove",
+  "wheel",
+  "abort",
+  "animationEnd",
+  "animationIteration",
+  "animationStart",
+  "canPlay",
+  "canPlayThrough",
+  "durationChange",
+  "emptied",
+  "encrypted",
+  "ended",
+  "error",
+  "gotPointerCapture",
+  "load",
+  "loadedData",
+  "loadedMetadata",
+  "loadStart",
+  "lostPointerCapture",
+  "playing",
+  "progress",
+  "seeking",
+  "stalled",
+  "suspend",
+  "timeUpdate",
+  "transitionEnd",
+  "waiting",
+  "mouseEnter",
+  "mouseLeave",
+  "pointerEnter",
+  "pointerLeave",
+  "change",
+  "select",
+  "beforeInput",
+  "compositionEnd",
+  "compositionStart",
+  "compositionUpdate",
+];
 
 function buildSimulators() {
-  simulatedEventTypes.forEach(eventType => {
+  simulatedEventTypes.forEach((eventType) => {
     Simulate[eventType] = makeSimulator(eventType);
   });
 }

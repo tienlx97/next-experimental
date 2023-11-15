@@ -112,6 +112,7 @@ var enableTransitionTracing = false; // No known bugs, but needs performance tes
 // issues in DEV builds.
 
 var enableDebugTracing = false; // Track which Fiber(s) schedule render work.
+ // false;
 
 var ContextRegistry = {};
 
@@ -184,7 +185,7 @@ function printWarning(level, format, args) {
   }
 }
 
-var ReactVersion = '18.3.0-experimental-aec521a96-20231114';
+var ReactVersion = '18.3.0-experimental-07cc4a000-20231113';
 
 // ATTENTION
 // When adding new symbols to this file,
